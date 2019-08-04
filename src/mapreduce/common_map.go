@@ -2,6 +2,11 @@ package mapreduce
 
 import (
 	"hash/fnv"
+    "io"
+    "io/ioutil"
+    "os"
+    "encoding/json"
+    "log"
 )
 
 func doMap(
@@ -53,6 +58,37 @@ func doMap(
 	//
 	// Your code here (Part I).
 	//
+    in, err := os.Open(inFile)
+    if err != nil {
+        log.Fatalf("open infile fail, infile: %s, err: %s", inFile, err)
+    }
+    defer in.Close()
+    inReader := io.Reader(in)
+    var inDatas []byte
+    inDatas, err = ioutil.ReadAll(inReader)
+    if err != nil {
+        log.Fatalf("read infile fail, infile: %s, err: %s", inDatas, err)
+    }
+
+    reduceTaskToEncoder := make(map[int]*json.Encoder)
+    for reduceTask := 0; reduceTask < nReduce; reduceTask++ {
+        outFile := reduceName(jobName, mapTask, reduceTask)
+        out, err := os.OpenFile(outFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
+        if err != nil {
+            log.Fatalf("open outfile fail, outfile: %s, err: %s", outFile, err)
+        }
+        defer out.Close()
+        reduceTaskToEncoder[reduceTask] = json.NewEncoder(out)
+    }
+
+    keyValues := mapF(inFile, string(inDatas[:]))
+    for _, keyValue := range keyValues {
+        reduceTask := ihash(keyValue.Key)%nReduce
+        err = reduceTaskToEncoder[reduceTask].Encode(keyValue)
+        if err != nil {
+            log.Fatalf("encode json string fail, err: %s", err)
+        }
+    }
 }
 
 func ihash(s string) int {
