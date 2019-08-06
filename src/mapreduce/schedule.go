@@ -1,6 +1,7 @@
 package mapreduce
 
 import "fmt"
+import "sync"
 
 //
 // schedule() starts and waits for all tasks in the given phase (mapPhase
@@ -30,5 +31,69 @@ func schedule(jobName string, mapFiles []string, nReduce int, phase jobPhase, re
 	//
 	// Your code here (Part III, Part IV).
 	//
+
+    waitGroup := sync.WaitGroup{}
+    waitGroup.Add(ntasks)
+    taskArgChan := make(chan *DoTaskArgs, 10)
+    idleWorkers := make([]string, 0)
+    penddingTasks := make([]*DoTaskArgs, 0)
+
+    // 选一个可用的worker派发task
+    sendTask := func(workerAddr string, taskArg *DoTaskArgs) {
+        if (call(workerAddr, "Worker.DoTask", taskArg, nil)) {
+            // 成功后, worker重新放回idle数组,
+            // 用于运行其他task
+            registerChan <- workerAddr
+            waitGroup.Done()
+        } else {
+            // 失败后, 选择其他worker重跑task
+            taskArgChan <- taskArg
+        }
+    }
+    trySendTask := func() {
+        for len(penddingTasks) > 0 {
+            if len(idleWorkers) == 0 {
+                return
+            }
+            workerAddr := idleWorkers[0]
+            taskArg := penddingTasks[0]
+            go sendTask(workerAddr, taskArg)
+            idleWorkers = idleWorkers[1:]
+            penddingTasks = penddingTasks[1:]
+        }
+    }
+
+    // 运行一个goroutine消费task
+    go func() {
+        for {
+            select {
+            case workerAddr := <-registerChan:
+                // 有worker注册
+                idleWorkers = append(idleWorkers, workerAddr)
+                trySendTask()
+            case taskArg := <-taskArgChan:
+                // 有task要分发
+                penddingTasks = append(penddingTasks, taskArg)
+                trySendTask()
+            }
+        }
+    }()
+
+    // 向goroutine发送task
+    for i:=0; i<ntasks; i++ {
+        taskArg := &DoTaskArgs{
+            JobName: jobName,
+            Phase: phase,
+            TaskNumber: i,
+            NumOtherPhase: n_other,
+        }
+        if phase == mapPhase {
+            taskArg.File = mapFiles[i]
+        }
+        taskArgChan <- taskArg
+    }
+
+    // 等待执行完成
+    waitGroup.Wait()
 	fmt.Printf("Schedule: %v done\n", phase)
 }
