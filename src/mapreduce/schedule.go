@@ -39,7 +39,7 @@ func schedule(jobName string, mapFiles []string, nReduce int, phase jobPhase, re
     penddingTasks := make([]*DoTaskArgs, 0)
 
     // 选一个可用的worker派发task
-    sendTask := func(workerAddr string, taskArg *DoTaskArgs) {
+    execTask := func(workerAddr string, taskArg *DoTaskArgs) {
         if (call(workerAddr, "Worker.DoTask", taskArg, nil)) {
             // 成功后, worker重新放回idle数组,
             // 用于运行其他task
@@ -50,14 +50,14 @@ func schedule(jobName string, mapFiles []string, nReduce int, phase jobPhase, re
             taskArgChan <- taskArg
         }
     }
-    trySendTask := func() {
+    tryExecTask := func() {
         for len(penddingTasks) > 0 {
             if len(idleWorkers) == 0 {
                 return
             }
             workerAddr := idleWorkers[0]
             taskArg := penddingTasks[0]
-            go sendTask(workerAddr, taskArg)
+            go execTask(workerAddr, taskArg)
             idleWorkers = idleWorkers[1:]
             penddingTasks = penddingTasks[1:]
         }
@@ -70,11 +70,11 @@ func schedule(jobName string, mapFiles []string, nReduce int, phase jobPhase, re
             case workerAddr := <-registerChan:
                 // 有worker注册
                 idleWorkers = append(idleWorkers, workerAddr)
-                trySendTask()
+                tryExecTask()
             case taskArg := <-taskArgChan:
                 // 有task要分发
                 penddingTasks = append(penddingTasks, taskArg)
-                trySendTask()
+                tryExecTask()
             }
         }
     }()

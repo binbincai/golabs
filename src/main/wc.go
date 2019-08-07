@@ -19,7 +19,7 @@ func mapF(filename string, contents string) []mapreduce.KeyValue {
 	// Your code here (Part II).
     words := strings.FieldsFunc(contents, func(c rune) bool {
                                     // 返回该字符是否作为分隔符
-                                    return !unicode.IsLetter(c) && !unicode.IsNumber(c)
+                                    return !unicode.IsLetter(c)
                                 })
     keyValues := make([]mapreduce.KeyValue, 0)
     for _, word := range words {
