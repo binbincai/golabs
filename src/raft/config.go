@@ -8,17 +8,20 @@ package raft
 // test with the original before submitting.
 //
 
-import "labrpc"
-import "log"
-import "sync"
-import "testing"
-import "runtime"
-import "math/rand"
-import crand "crypto/rand"
-import "math/big"
-import "encoding/base64"
-import "time"
-import "fmt"
+import (
+	"labrpc"
+	"log"
+	"math/rand"
+	"runtime"
+	"sync"
+	"testing"
+
+	crand "crypto/rand"
+	"encoding/base64"
+	"fmt"
+	"math/big"
+	"time"
+)
 
 func randstring(n int) string {
 	b := make([]byte, 2*n)
@@ -424,6 +427,7 @@ func (cfg *config) wait(index int, n int, startTerm int) interface{} {
 // if retry==false, calls Start() only once, in order
 // to simplify the early Lab 2B tests.
 func (cfg *config) one(cmd int, expectedServers int, retry bool) int {
+	//DPrintf("one(%d) first in", cmd)
 	t0 := time.Now()
 	starts := 0
 	for time.Since(t0).Seconds() < 10 {
