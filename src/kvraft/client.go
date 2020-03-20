@@ -1,13 +1,19 @@
 package raftkv
 
-import "labrpc"
-import "crypto/rand"
-import "math/big"
-
+import (
+	"crypto/rand"
+	"labrpc"
+	"math/big"
+	"sync"
+	"time"
+)
 
 type Clerk struct {
 	servers []*labrpc.ClientEnd
 	// You will have to modify this struct.
+	prefer  int
+	mu      sync.Mutex
+	timeout time.Duration
 }
 
 func nrand() int64 {
@@ -21,6 +27,7 @@ func MakeClerk(servers []*labrpc.ClientEnd) *Clerk {
 	ck := new(Clerk)
 	ck.servers = servers
 	// You'll have to add code here.
+	ck.timeout = time.Second
 	return ck
 }
 
@@ -37,8 +44,49 @@ func MakeClerk(servers []*labrpc.ClientEnd) *Clerk {
 // arguments. and reply must be passed as a pointer.
 //
 func (ck *Clerk) Get(key string) string {
-
 	// You will have to modify this function.
+	args := NewGetArgs(key)
+
+	ck.mu.Lock()
+	prefer := ck.prefer
+	ck.mu.Unlock()
+
+	for {
+		for i := range ck.servers {
+			reply := &GetReply{}
+
+			t := time.NewTimer(ck.timeout)
+			d := make(chan bool, 1)
+			go func() {
+				index := (prefer + i) % len(ck.servers)
+				d <- ck.servers[index].Call("KVServer.Get", args, reply)
+			}()
+
+			select {
+			case ok := <-d:
+				t.Stop()
+				if !ok {
+					continue
+				}
+			case <-t.C:
+				continue
+			}
+
+			if reply.WrongLeader {
+				continue
+			}
+			if reply.Err != "" {
+				continue
+			}
+
+			ck.mu.Lock()
+			ck.prefer = (prefer + i) % len(ck.servers)
+			ck.mu.Unlock()
+
+			return reply.Value
+		}
+	}
+
 	return ""
 }
 
@@ -54,6 +102,46 @@ func (ck *Clerk) Get(key string) string {
 //
 func (ck *Clerk) PutAppend(key string, value string, op string) {
 	// You will have to modify this function.
+	args := NewPutAppendArgs(key, value, op)
+
+	ck.mu.Lock()
+	prefer := ck.prefer
+	ck.mu.Unlock()
+
+	for {
+		for i := range ck.servers {
+			reply := &PutAppendReply{}
+
+			t := time.NewTimer(ck.timeout)
+			d := make(chan bool, 1)
+			go func() {
+				index := (prefer + i) % len(ck.servers)
+				d <- ck.servers[index].Call("KVServer.PutAppend", args, reply)
+			}()
+
+			select {
+			case ok := <-d:
+				t.Stop()
+				if !ok {
+					continue
+				}
+			case <-t.C:
+				continue
+			}
+
+			if reply.WrongLeader {
+				continue
+			}
+			if reply.Err != "" {
+				continue
+			}
+
+			ck.mu.Lock()
+			ck.prefer = (prefer + i) % len(ck.servers)
+			ck.mu.Unlock()
+			return
+		}
+	}
 }
 
 func (ck *Clerk) Put(key string, value string) {

@@ -15,6 +15,16 @@ type PutAppendArgs struct {
 	// You'll have to add definitions here.
 	// Field names must start with capital letters,
 	// otherwise RPC will break.
+	Tag int64
+}
+
+func NewPutAppendArgs(key, value, op string) *PutAppendArgs {
+	return &PutAppendArgs{
+		Key: key,
+		Value: value,
+		Op: op,
+		Tag: nrand(),
+	}
 }
 
 type PutAppendReply struct {
@@ -25,6 +35,14 @@ type PutAppendReply struct {
 type GetArgs struct {
 	Key string
 	// You'll have to add definitions here.
+	Tag int64
+}
+
+func NewGetArgs(key string) *GetArgs {
+	return &GetArgs{
+		Key: key,
+		Tag: nrand(),
+	}
 }
 
 type GetReply struct {

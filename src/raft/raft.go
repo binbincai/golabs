@@ -147,7 +147,7 @@ func (rf *Raft) persist() {
 	e.Encode(rf.votedFor)
 	e.Encode(rf.log)
 	//e.Encode(rf.commitIndex)
-	e.Encode(rf.lastApplied)
+	//e.Encode(rf.lastApplied)
 	rf.persister.SaveRaftState(w.Bytes())
 	// DPrintf("me: %s, persist", rf.String())
 }
@@ -165,7 +165,7 @@ func (rf *Raft) readPersist(data []byte) {
 	d.Decode(&rf.votedFor)
 	d.Decode(&rf.log)
 	//d.Decode(&rf.commitIndex)
-	d.Decode(&rf.lastApplied)
+	//d.Decode(&rf.lastApplied)
 	DPrintf("me: %s, readPersist", rf.String())
 }
 
@@ -710,7 +710,6 @@ func (rf *Raft) apply() {
 	defer func() {
 		rf.mu.Unlock()
 	}()
-
 	for rf.lastApplied < rf.commitIndex {
 		index := rf.lastApplied + 1
 		applyMsg := ApplyMsg{
@@ -720,6 +719,7 @@ func (rf *Raft) apply() {
 		}
 
 		rf.applyCn <- applyMsg
+
 		rf.lastApplied++
 		rf.persist()
 
