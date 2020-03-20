@@ -79,6 +79,7 @@ type Raft struct {
 	log           map[int]Log // Log entries, first log's index is 1
 	firstLogIndex int         // Index of first valid log entry
 	lastLogIndex  int         // Index of last valid log entry
+	snapshotIndex int         // Index of current snapshot
 
 	commitIndex int // Index of highest log entry known to be commited
 	lastApplied int // Index of highest log entry applied to state machine
@@ -150,7 +151,24 @@ func (rf *Raft) persist() {
 	e.Encode(rf.log)
 	e.Encode(rf.firstLogIndex)
 	e.Encode(rf.lastLogIndex)
+	e.Encode(rf.snapshotIndex)
 	rf.persister.SaveRaftState(w.Bytes())
+}
+
+func (rf *Raft) PersitWithSnapshot(snapshotIndex int, snapshot []byte) {
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
+
+	rf.snapshotIndex = snapshotIndex
+	w := new(bytes.Buffer)
+	e := labgob.NewEncoder(w)
+	e.Encode(rf.currentTerm)
+	e.Encode(rf.votedFor)
+	e.Encode(rf.log)
+	e.Encode(rf.firstLogIndex)
+	e.Encode(rf.lastLogIndex)
+	e.Encode(rf.snapshotIndex)
+	rf.persister.SaveStateAndSnapshot(w.Bytes(), snapshot)
 }
 
 //
@@ -167,6 +185,7 @@ func (rf *Raft) readPersist(data []byte) {
 	d.Decode(&rf.log)
 	d.Decode(&rf.firstLogIndex)
 	d.Decode(&rf.lastLogIndex)
+	d.Decode(&rf.snapshotIndex)
 	DPrintf("me: %s, readPersist", rf.String())
 }
 
@@ -444,6 +463,7 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.log = make(map[int]Log)
 	rf.firstLogIndex = 0
 	rf.lastLogIndex = 0
+	rf.snapshotIndex = 0
 	rf.commitIndex = 0
 	rf.lastApplied = 0
 
@@ -466,6 +486,7 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	go rf.backgroundElect()
 	go rf.backgroundHeartbeat()
 	go rf.backgroundApply()
+	go rf.backgroundTrimLog()
 
 	return rf
 }
@@ -600,6 +621,7 @@ func (rf *Raft) newAppendEntriesArgs(peerIdx int) *AppendEntriesArgs {
 	req.Entries = make([]Log, 0)
 	req.LeaderCommit = rf.commitIndex
 
+	// TODO: index大于rf.firstLogIndex时, 需要使用snapshot
 	index := rf.nextIndex[peerIdx]
 	if index <= rf.lastLogIndex {
 		for i := index; i <= rf.lastLogIndex && len(req.Entries) <= rf.batchCnt; i++ {
@@ -794,6 +816,32 @@ func (rf *Raft) backgroundApply() {
 			if isLeader {
 				rf.resetHeartbeatCh <- '0'
 			}
+		}
+	}
+}
+
+func (rf *Raft) trimLog() {
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
+	change := false
+	for i := 1; i <= rf.snapshotIndex && i < rf.commitIndex; i++ {
+		delete(rf.log, i)
+		rf.firstLogIndex = i + 1
+		change = true
+	}
+	if change {
+		rf.persist()
+		DPrintf("Trim log, first log index: %d, snapshot index: %d", rf.firstLogIndex, rf.snapshotIndex)
+	}
+}
+
+func (rf *Raft) backgroundTrimLog() {
+	for {
+		timeout := 10 * time.Second / 1000
+		timer := time.NewTimer(timeout)
+		select {
+		case <-timer.C:
+			rf.trimLog()
 		}
 	}
 }

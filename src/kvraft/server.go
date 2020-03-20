@@ -1,6 +1,7 @@
 package raftkv
 
 import (
+	"bytes"
 	"labgob"
 	"labrpc"
 	"log"
@@ -9,7 +10,7 @@ import (
 	"time"
 )
 
-const Debug = 0
+const Debug = 1
 
 func DPrintf(format string, a ...interface{}) (n int, err error) {
 	if Debug > 0 {
@@ -30,7 +31,7 @@ func NewOp(key, value, operationType string, tag int64) Op {
 }
 
 type ResultMsg struct {
-	value string
+	Value string
 }
 
 type PendingMsg struct {
@@ -55,18 +56,21 @@ type KVServer struct {
 	maxraftstate int // snapshot if log grows this big
 
 	// Your definitions here.
-	keyValue    map[string]string // need persist
-	pendingCh   chan PendingMsg
-	appliedCh   chan AppliedMsg
+	keyValue    map[string]string   // need persist
+	pendingCh   chan PendingMsg     //
+	appliedCh   chan AppliedMsg     //
 	tagToResult map[int64]ResultMsg // need persit
-	timeout     time.Duration
-	tagApplied  map[int64]bool // need persist
+	timeout     time.Duration       //
+	tagApplied  map[int64]bool      // need persist
+	lastIndex   int                 // need persit
+
+	persister *raft.Persister
 }
 
 func (kv *KVServer) Get(args *GetArgs, reply *GetReply) {
 	kv.mu.Lock()
 	if rmsg, ok := kv.tagToResult[args.Tag]; ok {
-		reply.Value = rmsg.value
+		reply.Value = rmsg.Value
 		kv.mu.Unlock()
 		return
 	}
@@ -90,7 +94,7 @@ func (kv *KVServer) Get(args *GetArgs, reply *GetReply) {
 
 	select {
 	case rmsg := <-pmsg.ch:
-		reply.Value = rmsg.value
+		reply.Value = rmsg.Value
 	case <-t.C:
 		reply.Err = "Get timeout"
 	}
@@ -177,8 +181,13 @@ func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persiste
 
 	kv.timeout = time.Second
 
-	go kv.applyBackground()
-	go kv.pendingBackground()
+	kv.persister = persister
+
+	kv.readSnapshot()
+
+	go kv.backgroundApply()
+	go kv.backgroundPending()
+	go kv.backgroundSnapshot()
 
 	DPrintf("StartKVServer me: %d, keyvalue:%v", me, kv.keyValue)
 
@@ -192,6 +201,7 @@ func (kv *KVServer) apply(msg raft.ApplyMsg) AppliedMsg {
 	if !msg.CommandValid {
 		return amsg
 	}
+
 	op := msg.Command.(Op)
 	if kv.tagApplied[op.Tag] {
 		return amsg
@@ -217,10 +227,12 @@ func (kv *KVServer) apply(msg raft.ApplyMsg) AppliedMsg {
 			kv.keyValue[op.Key] = op.Value
 		}
 	}
+
+	kv.lastIndex = msg.CommandIndex
 	return amsg
 }
 
-func (kv *KVServer) applyBackground() {
+func (kv *KVServer) backgroundApply() {
 	for {
 		select {
 		case msg := <-kv.applyCh:
@@ -229,7 +241,7 @@ func (kv *KVServer) applyBackground() {
 	}
 }
 
-func (kv *KVServer) pendingBackground() {
+func (kv *KVServer) backgroundPending() {
 	tagToPendingMsgs := make(map[int64][]PendingMsg)
 	for {
 		select {
@@ -246,7 +258,7 @@ func (kv *KVServer) pendingBackground() {
 				continue
 			}
 
-			result := ResultMsg{value: value}
+			result := ResultMsg{value}
 			for _, pmsg := range tagToPendingMsgs[tag] {
 				pmsg.ch <- result
 			}
@@ -255,6 +267,48 @@ func (kv *KVServer) pendingBackground() {
 			kv.mu.Lock()
 			kv.tagToResult[tag] = result
 			kv.mu.Unlock()
+		}
+	}
+}
+
+func (kv *KVServer) readSnapshot() {
+	data := kv.persister.ReadSnapshot()
+	if len(data) == 0 {
+		return
+	}
+	r := bytes.NewBuffer(data)
+	d := labgob.NewDecoder(r)
+	d.Decode(&kv.keyValue)
+	d.Decode(&kv.tagToResult)
+	d.Decode(&kv.tagApplied)
+	d.Decode(&kv.lastIndex)
+}
+
+func (kv *KVServer) snapShotIfNeeded() {
+	if kv.maxraftstate > kv.persister.RaftStateSize() {
+		return
+	}
+
+	kv.mu.Lock()
+	w := new(bytes.Buffer)
+	e := labgob.NewEncoder(w)
+	e.Encode(kv.keyValue)
+	e.Encode(kv.tagToResult)
+	e.Encode(kv.tagApplied)
+	e.Encode(kv.lastIndex)
+	kv.mu.Unlock()
+
+	kv.rf.PersitWithSnapshot(kv.lastIndex, w.Bytes())
+	DPrintf("Snapshot, me: %d, maxsize: %d, currentsize: %d, last index: %d", kv.me, kv.maxraftstate, kv.persister.RaftStateSize(), kv.lastIndex)
+}
+
+func (kv *KVServer) backgroundSnapshot() {
+	for {
+		timeout := 100 * time.Second / 1000
+		timer := time.NewTimer(timeout)
+		select {
+		case <-timer.C:
+			kv.snapShotIfNeeded()
 		}
 	}
 }
