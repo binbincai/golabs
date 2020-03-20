@@ -20,10 +20,10 @@ type PutAppendArgs struct {
 
 func NewPutAppendArgs(key, value, op string) *PutAppendArgs {
 	return &PutAppendArgs{
-		Key: key,
+		Key:   key,
 		Value: value,
-		Op: op,
-		Tag: nrand(),
+		Op:    op,
+		Tag:   nrand(),
 	}
 }
 
