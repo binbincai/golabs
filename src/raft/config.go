@@ -427,7 +427,7 @@ func (cfg *config) wait(index int, n int, startTerm int) interface{} {
 // if retry==false, calls Start() only once, in order
 // to simplify the early Lab 2B tests.
 func (cfg *config) one(cmd int, expectedServers int, retry bool) int {
-	//DPrintf("one(%d) first in", cmd)
+	DPrintf("one(%d) first in", cmd)
 	t0 := time.Now()
 	starts := 0
 	for time.Since(t0).Seconds() < 10 {
