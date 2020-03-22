@@ -15,7 +15,8 @@ type PutAppendArgs struct {
 	// You'll have to add definitions here.
 	// Field names must start with capital letters,
 	// otherwise RPC will break.
-	Tag int64
+	Tag     int64
+	PrevTag int64
 }
 
 func NewPutAppendArgs(key, value, op string) *PutAppendArgs {

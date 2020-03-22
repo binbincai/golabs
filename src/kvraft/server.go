@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-const Debug = 1
+const Debug = 0
 
 func DPrintf(format string, a ...interface{}) (n int, err error) {
 	if Debug > 0 {
@@ -24,10 +24,11 @@ type Op struct {
 	Value         string
 	OperationType string
 	Tag           int64
+	PrevTag       int64
 }
 
-func NewOp(key, value, operationType string, tag int64) Op {
-	return Op{key, value, operationType, tag}
+func NewOp(key, value, operationType string, tag, prevTag int64) Op {
+	return Op{key, value, operationType, tag, prevTag}
 }
 
 type ResultMsg struct {
@@ -56,27 +57,19 @@ type KVServer struct {
 	maxraftstate int // snapshot if log grows this big
 
 	// Your definitions here.
-	keyValue    map[string]string   // need persist
-	pendingCh   chan PendingMsg     //
-	appliedCh   chan AppliedMsg     //
-	tagToResult map[int64]ResultMsg // need persit
-	timeout     time.Duration       //
-	tagApplied  map[int64]bool      // need persist
-	lastIndex   int                 // need persit
+	keyValue   map[string]string // need persist
+	tagApplied map[int64]bool    //
+	pendingCh  chan PendingMsg   //
+	appliedCh  chan AppliedMsg   //
+	timeout    time.Duration     //
+	lastIndex  int               // need persist
+	lastTerm   int               // nned persist
 
 	persister *raft.Persister
 }
 
 func (kv *KVServer) Get(args *GetArgs, reply *GetReply) {
-	kv.mu.Lock()
-	if rmsg, ok := kv.tagToResult[args.Tag]; ok {
-		reply.Value = rmsg.Value
-		kv.mu.Unlock()
-		return
-	}
-	kv.mu.Unlock()
-
-	op := NewOp(args.Key, "", "Get", args.Tag)
+	op := NewOp(args.Key, "", "Get", args.Tag, 0)
 	index, term, isleader := kv.rf.Start(op)
 	if !isleader {
 		reply.WrongLeader = true
@@ -98,17 +91,14 @@ func (kv *KVServer) Get(args *GetArgs, reply *GetReply) {
 	case <-t.C:
 		reply.Err = "Get timeout"
 	}
+
+	if !kv.rf.IsLeader() {
+		reply.WrongLeader = true
+	}
 }
 
 func (kv *KVServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) {
-	kv.mu.Lock()
-	if _, ok := kv.tagToResult[args.Tag]; ok {
-		kv.mu.Unlock()
-		return
-	}
-	kv.mu.Unlock()
-
-	op := NewOp(args.Key, args.Value, args.Op, args.Tag)
+	op := NewOp(args.Key, args.Value, args.Op, args.Tag, args.PrevTag)
 	index, term, isleader := kv.rf.Start(op)
 	if !isleader {
 		reply.WrongLeader = true
@@ -130,6 +120,10 @@ func (kv *KVServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) {
 	case <-t.C:
 		reply.Err = "PutAppend timeout"
 	}
+
+	if !kv.rf.IsLeader() {
+		reply.WrongLeader = true
+	}
 }
 
 //
@@ -141,7 +135,7 @@ func (kv *KVServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) {
 func (kv *KVServer) Kill() {
 	kv.rf.Kill()
 	// Your code here, if desired.
-	DPrintf("Kill me: %d, kv: %v", kv.me, kv.keyValue)
+	//DPrintf("Kill me: %d, kv: %v", kv.me, kv.keyValue)
 }
 
 //
@@ -165,7 +159,8 @@ func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persiste
 
 	kv := new(KVServer)
 	kv.me = me
-	kv.maxraftstate = maxraftstate
+	//kv.maxraftstate = maxraftstate
+	kv.maxraftstate = 1
 
 	// You may need initialization code here.
 
@@ -174,22 +169,21 @@ func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persiste
 
 	// You may need initialization code here.
 	kv.keyValue = make(map[string]string)
+	kv.tagApplied = make(map[int64]bool)
 	kv.pendingCh = make(chan PendingMsg)
 	kv.appliedCh = make(chan AppliedMsg)
-	kv.tagApplied = make(map[int64]bool)
-	kv.tagToResult = make(map[int64]ResultMsg)
-
-	kv.timeout = time.Second
+	kv.timeout = time.Second / 2
+	kv.lastIndex = 0
+	kv.lastTerm = 0
 
 	kv.persister = persister
-
-	kv.readSnapshot()
+	kv.readPersist(persister.ReadSnapshot())
 
 	go kv.backgroundApply()
 	go kv.backgroundPending()
 	go kv.backgroundSnapshot()
 
-	DPrintf("StartKVServer me: %d, keyvalue:%v", me, kv.keyValue)
+	DPrintf("StartKVServer me: %d", me)
 
 	return kv
 }
@@ -198,51 +192,92 @@ func (kv *KVServer) apply(msg raft.ApplyMsg) AppliedMsg {
 	amsg := AppliedMsg{
 		index: msg.CommandIndex,
 	}
-	if !msg.CommandValid {
+
+	if msg.CommandIndex != kv.lastIndex+1 {
 		return amsg
 	}
 
 	op := msg.Command.(Op)
-	if kv.tagApplied[op.Tag] {
-		return amsg
-	}
-	kv.tagApplied[op.Tag] = true
-
 	amsg.op = op
 
 	if op.OperationType == "Get" {
 		if v, ok := kv.keyValue[op.Key]; ok {
 			amsg.value = v
 		}
-	}
+	} else if !kv.tagApplied[op.Tag] {
+		kv.tagApplied[op.Tag] = true
 
-	if op.OperationType == "Put" {
-		kv.keyValue[op.Key] = op.Value
-	}
-
-	if op.OperationType == "Append" {
-		if v, ok := kv.keyValue[op.Key]; ok {
-			kv.keyValue[op.Key] = string(append([]byte(v), op.Value...))
-		} else {
+		if op.OperationType == "Put" {
 			kv.keyValue[op.Key] = op.Value
+		}
+
+		if op.OperationType == "Append" {
+			if v, ok := kv.keyValue[op.Key]; ok {
+				kv.keyValue[op.Key] = string(append([]byte(v), op.Value...))
+			} else {
+				kv.keyValue[op.Key] = op.Value
+			}
 		}
 	}
 
+	if op.PrevTag > 0 {
+		delete(kv.tagApplied, op.PrevTag)
+	}
+
 	kv.lastIndex = msg.CommandIndex
+	kv.lastTerm = msg.CommandTerm
+	DPrintf("me: %d, key: %s, value: %s", kv.me, op.Key, kv.keyValue[op.Key])
 	return amsg
+}
+
+func (kv *KVServer) readPersist(data []byte) {
+	if len(data) == 0 {
+		return
+	}
+	r := bytes.NewBuffer(data)
+	d := labgob.NewDecoder(r)
+	d.Decode(&kv.keyValue)
+	d.Decode(&kv.tagApplied)
+	d.Decode(&kv.lastIndex)
+	d.Decode(&kv.lastTerm)
+}
+
+func (kv *KVServer) applyInner(msg raft.ApplyMsg) {
+	if len(msg.SnapshotData) != 0 {
+		kv.readPersist(msg.SnapshotData)
+	}
 }
 
 func (kv *KVServer) backgroundApply() {
 	for {
 		select {
 		case msg := <-kv.applyCh:
-			kv.appliedCh <- kv.apply(msg)
+			if msg.CommandValid {
+				kv.mu.Lock()
+				amsg := kv.apply(msg)
+				kv.mu.Unlock()
+				kv.appliedCh <- amsg
+				DPrintf("Apply, me: %d, %v", kv.me, msg)
+			} else {
+				kv.mu.Lock()
+				kv.applyInner(msg)
+				kv.mu.Unlock()
+				DPrintf("Apply inner, me: %d, %v", kv.me, msg)
+			}
 		}
 	}
 }
 
 func (kv *KVServer) backgroundPending() {
 	tagToPendingMsgs := make(map[int64][]PendingMsg)
+
+	replyPendingMsgs := func(tag int64, rmsg ResultMsg) {
+		for _, pmsg := range tagToPendingMsgs[tag] {
+			pmsg.ch <- rmsg
+		}
+		tagToPendingMsgs[tag] = tagToPendingMsgs[tag][0:0]
+	}
+
 	for {
 		select {
 		case pmsg := <-kv.pendingCh:
@@ -251,60 +286,45 @@ func (kv *KVServer) backgroundPending() {
 				tagToPendingMsgs[tag] = make([]PendingMsg, 0)
 			}
 			tagToPendingMsgs[tag] = append(tagToPendingMsgs[tag], pmsg)
+
 		case amsg := <-kv.appliedCh:
 			tag := amsg.op.Tag
-			value := amsg.value
 			if _, ok := tagToPendingMsgs[tag]; !ok {
 				continue
 			}
-
-			result := ResultMsg{value}
-			for _, pmsg := range tagToPendingMsgs[tag] {
-				pmsg.ch <- result
-			}
-			tagToPendingMsgs[tag] = tagToPendingMsgs[tag][0:0]
-
-			kv.mu.Lock()
-			kv.tagToResult[tag] = result
-			kv.mu.Unlock()
+			replyPendingMsgs(tag, ResultMsg{amsg.value})
 		}
 	}
 }
 
-func (kv *KVServer) readSnapshot() {
-	data := kv.persister.ReadSnapshot()
-	if len(data) == 0 {
+func (kv *KVServer) snapShotIfNeeded() {
+	if kv.maxraftstate <= 0 {
 		return
 	}
-	r := bytes.NewBuffer(data)
-	d := labgob.NewDecoder(r)
-	d.Decode(&kv.keyValue)
-	d.Decode(&kv.tagToResult)
-	d.Decode(&kv.tagApplied)
-	d.Decode(&kv.lastIndex)
-}
-
-func (kv *KVServer) snapShotIfNeeded() {
 	if kv.maxraftstate > kv.persister.RaftStateSize() {
 		return
 	}
 
-	kv.mu.Lock()
-	w := new(bytes.Buffer)
-	e := labgob.NewEncoder(w)
-	e.Encode(kv.keyValue)
-	e.Encode(kv.tagToResult)
-	e.Encode(kv.tagApplied)
-	e.Encode(kv.lastIndex)
-	kv.mu.Unlock()
+	snapshot := func() (data []byte, index, term int) {
+		kv.mu.Lock()
+		lastIndex, lastTerm := kv.lastIndex, kv.lastTerm
+		w := new(bytes.Buffer)
+		e := labgob.NewEncoder(w)
+		e.Encode(kv.keyValue)
+		e.Encode(kv.tagApplied)
+		e.Encode(kv.lastIndex)
+		e.Encode(kv.lastTerm)
+		kv.mu.Unlock()
+		return w.Bytes(), lastIndex, lastTerm
+	}
 
-	kv.rf.PersitWithSnapshot(kv.lastIndex, w.Bytes())
+	kv.rf.PersitWithSnapshot(snapshot)
 	DPrintf("Snapshot, me: %d, maxsize: %d, currentsize: %d, last index: %d", kv.me, kv.maxraftstate, kv.persister.RaftStateSize(), kv.lastIndex)
 }
 
 func (kv *KVServer) backgroundSnapshot() {
 	for {
-		timeout := 100 * time.Second / 1000
+		timeout := 10 * time.Second / 1000
 		timer := time.NewTimer(timeout)
 		select {
 		case <-timer.C:

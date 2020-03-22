@@ -675,6 +675,7 @@ func TestSnapshotSize3B(t *testing.T) {
 	}
 
 	// check that the snapshots are not unreasonably large
+	//maxsnapshotstate = 200000
 	if cfg.SnapshotSize() > maxsnapshotstate {
 		t.Fatalf("snapshot too large (%v > %v)", cfg.SnapshotSize(), maxsnapshotstate)
 	}

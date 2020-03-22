@@ -4,16 +4,17 @@ import (
 	"crypto/rand"
 	"labrpc"
 	"math/big"
-	"sync"
 	"time"
 )
 
 type Clerk struct {
 	servers []*labrpc.ClientEnd
 	// You will have to modify this struct.
-	prefer  int
-	mu      sync.Mutex
+	prefer int
+	//mu      sync.Mutex
 	timeout time.Duration
+
+	tag int64
 }
 
 func nrand() int64 {
@@ -47,9 +48,9 @@ func (ck *Clerk) Get(key string) string {
 	// You will have to modify this function.
 	args := NewGetArgs(key)
 
-	ck.mu.Lock()
+	//ck.mu.Lock()
 	prefer := ck.prefer
-	ck.mu.Unlock()
+	//ck.mu.Unlock()
 
 	for {
 		for i := range ck.servers {
@@ -79,9 +80,9 @@ func (ck *Clerk) Get(key string) string {
 				continue
 			}
 
-			ck.mu.Lock()
+			//ck.mu.Lock()
 			ck.prefer = (prefer + i) % len(ck.servers)
-			ck.mu.Unlock()
+			//ck.mu.Unlock()
 
 			return reply.Value
 		}
@@ -101,10 +102,11 @@ func (ck *Clerk) Get(key string) string {
 func (ck *Clerk) PutAppend(key string, value string, op string) {
 	// You will have to modify this function.
 	args := NewPutAppendArgs(key, value, op)
+	args.PrevTag = ck.tag
 
-	ck.mu.Lock()
+	//ck.mu.Lock()
 	prefer := ck.prefer
-	ck.mu.Unlock()
+	//ck.mu.Unlock()
 
 	for {
 		for i := range ck.servers {
@@ -134,9 +136,10 @@ func (ck *Clerk) PutAppend(key string, value string, op string) {
 				continue
 			}
 
-			ck.mu.Lock()
+			//ck.mu.Lock()
 			ck.prefer = (prefer + i) % len(ck.servers)
-			ck.mu.Unlock()
+			ck.tag = args.Tag
+			//ck.mu.Unlock()
 			return
 		}
 	}
