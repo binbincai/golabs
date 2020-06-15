@@ -9,7 +9,7 @@ package raft
 //
 
 import (
-	"labrpc"
+	"github.com/binbincai/golabs/src/labrpc"
 	"log"
 	"math/rand"
 	"runtime"

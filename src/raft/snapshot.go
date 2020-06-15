@@ -2,7 +2,7 @@ package raft
 
 import (
 	"bytes"
-	"labgob"
+	"github.com/binbincai/golabs/src/labgob"
 )
 
 // PersitWithSnapshot snapshot consist: 1. last applied index and term

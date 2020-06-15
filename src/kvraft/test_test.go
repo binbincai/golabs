@@ -1,7 +1,7 @@
 package raftkv
 
 import (
-	"linearizability"
+	"github.com/binbincai/golabs/src/linearizability"
 	"log"
 	"math/rand"
 	"strconv"

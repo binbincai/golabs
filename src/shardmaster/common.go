@@ -28,6 +28,15 @@ type Config struct {
 	Groups map[int][]string // gid -> servers[]
 }
 
+func copyConfig(config Config) Config {
+	c := Config{
+		Num: config.Num,
+		Shards: config.Shards,
+		Groups: config.Groups,
+	}
+	return c
+}
+
 const (
 	OK = "OK"
 )
@@ -36,38 +45,38 @@ type Err string
 
 type JoinArgs struct {
 	Servers map[int][]string // new GID -> servers mappings
+	Tag int64
 }
 
 type JoinReply struct {
-	WrongLeader bool
 	Err         Err
 }
 
 type LeaveArgs struct {
 	GIDs []int
+	Tag int64
 }
 
 type LeaveReply struct {
-	WrongLeader bool
 	Err         Err
 }
 
 type MoveArgs struct {
 	Shard int
 	GID   int
+	Tag int64
 }
 
 type MoveReply struct {
-	WrongLeader bool
 	Err         Err
 }
 
 type QueryArgs struct {
 	Num int // desired config number
+	Tag int64
 }
 
 type QueryReply struct {
-	WrongLeader bool
 	Err         Err
 	Config      Config
 }

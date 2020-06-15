@@ -1,7 +1,7 @@
 package shardmaster
 
-import "labrpc"
-import "raft"
+import "github.com/binbincai/golabs/src/labrpc"
+import "github.com/binbincai/golabs/src/raft"
 import "testing"
 import "os"
 

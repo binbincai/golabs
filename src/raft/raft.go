@@ -20,8 +20,8 @@ package raft
 import (
 	"bytes"
 	"fmt"
-	"labgob"
-	"labrpc"
+	"github.com/binbincai/golabs/src/labgob"
+	"github.com/binbincai/golabs/src/labrpc"
 	"sync"
 )
 

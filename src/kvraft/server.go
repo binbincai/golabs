@@ -2,10 +2,10 @@ package raftkv
 
 import (
 	"bytes"
-	"labgob"
-	"labrpc"
+	"github.com/binbincai/golabs/src/labgob"
+	"github.com/binbincai/golabs/src/labrpc"
 	"log"
-	"raft"
+	"github.com/binbincai/golabs/src/raft"
 	"sync"
 	"time"
 )

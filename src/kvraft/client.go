@@ -2,7 +2,7 @@ package raftkv
 
 import (
 	"crypto/rand"
-	"labrpc"
+	"github.com/binbincai/golabs/src/labrpc"
 	"math/big"
 	"time"
 )

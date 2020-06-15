@@ -1,7 +1,7 @@
 package raftkv
 
 import (
-	"labrpc"
+	"github.com/binbincai/golabs/src/labrpc"
 	"os"
 	"testing"
 
@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"math/big"
 	"math/rand"
-	"raft"
+	"github.com/binbincai/golabs/src/raft"
 	"runtime"
 	"sync"
 	"sync/atomic"
