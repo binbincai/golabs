@@ -1,7 +1,7 @@
 package shardkv
 
-import "shardmaster"
-import "labrpc"
+import "github.com/binbincai/golabs/src/shardmaster"
+import "github.com/binbincai/golabs/src/labrpc"
 import "testing"
 import "os"
 
@@ -12,7 +12,7 @@ import "math/rand"
 import "encoding/base64"
 import "sync"
 import "runtime"
-import "raft"
+import "github.com/binbincai/golabs/src/raft"
 import "strconv"
 import "fmt"
 import "time"

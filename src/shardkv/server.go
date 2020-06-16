@@ -2,10 +2,13 @@ package shardkv
 
 
 // import "shardmaster"
-import "labrpc"
-import "raft"
+import (
+	"github.com/binbincai/golabs/src/labrpc"
+	"time"
+)
+import "github.com/binbincai/golabs/src/raft"
 import "sync"
-import "labgob"
+import "github.com/binbincai/golabs/src/labgob"
 
 
 
@@ -13,6 +16,19 @@ type Op struct {
 	// Your definitions here.
 	// Field names must start with capital letters,
 	// otherwise RPC will break.
+	Key string
+	Value string
+	Op string
+	Tag int64
+	PrevTag int64
+
+	ResultCh chan Result
+}
+
+type Result struct {
+	WrongLeader bool
+	Err         Err
+	Value       string
 }
 
 type ShardKV struct {
@@ -26,15 +42,139 @@ type ShardKV struct {
 	maxraftstate int // snapshot if log grows this big
 
 	// Your definitions here.
+	keyValue map[string]string
+	pending map[int64]chan Result
+	cache map[int64]Result
+	exitCh chan bool
+	requestCh chan Op
 }
 
+func (kv *ShardKV) apply(applyMsg raft.ApplyMsg) {
+	DPrintf("ShardKV.apply start")
+	defer DPrintf("ShardKV.apply end")
+	if !applyMsg.CommandValid {
+		return
+	}
+
+	op, ok := applyMsg.Command.(Op)
+	if !ok {
+		return
+	}
+
+	handled := func() bool {
+		kv.mu.Lock()
+		defer kv.mu.Unlock()
+		_, ok := kv.cache[op.Tag]
+		return ok
+	}()
+	if handled {
+		return
+	}
+
+	resultMsg := Result{
+		Err: OK,
+	}
+
+	if op.Op == "" {
+		if v, ok := kv.keyValue[op.Key]; ok {
+			resultMsg.Value = v
+		}
+	}
+	if op.Op == "Put" {
+		kv.keyValue[op.Key] = op.Value
+	}
+	if op.Op == "Append" {
+		if _, ok := kv.keyValue[op.Key]; !ok {
+			kv.keyValue[op.Key] = ""
+		}
+		kv.keyValue[op.Key] += op.Value
+	}
+
+	kv.mu.Lock()
+	defer kv.mu.Unlock()
+	if resultCh, ok := kv.pending[op.Tag]; ok {
+		resultCh <- resultMsg
+		close(resultCh)
+		delete(kv.pending, op.Tag)
+		DPrintf("ShardKV.apply result: %v", resultMsg)
+	}
+	kv.cache[op.Tag] = resultMsg
+}
+
+func (kv *ShardKV) request(op Op) {
+	DPrintf("ShardKV.request start")
+	defer DPrintf("ShardKV.request end")
+	_, _, isLeader := kv.rf.Start(op)
+	if !isLeader {
+		op.ResultCh <- Result{WrongLeader: true}
+		return
+	}
+
+	kv.mu.Lock()
+	defer kv.mu.Unlock()
+	if result, ok := kv.cache[op.Tag]; ok {
+		op.ResultCh <- result
+		close(op.ResultCh)
+		return
+	}
+	kv.pending[op.Tag] = op.ResultCh
+	// TODO: 清理cache
+}
+
+func (kv *ShardKV) background() {
+	for {
+		select {
+		case <- kv.exitCh:
+			break
+		case applyMsg := <- kv.applyCh:
+			kv.apply(applyMsg)
+		case requestMsg := <- kv.requestCh:
+			go kv.request(requestMsg)
+		}
+	}
+}
 
 func (kv *ShardKV) Get(args *GetArgs, reply *GetReply) {
-	// Your code here.
+	op := Op{
+		Key: args.Key,
+		Tag: args.Tag,
+		PrevTag: args.PrevTag,
+		ResultCh: make(chan Result, 1),
+	}
+	kv.requestCh <- op
+
+	t := time.NewTimer(100*time.Millisecond)
+	select {
+	case <- t.C:
+		reply.Err = ErrTimeout
+	case result :=<- op.ResultCh:
+		reply.WrongLeader = result.WrongLeader
+		reply.Value = result.Value
+		reply.Err = result.Err
+		DPrintf("ShardKV.Get: %v", result)
+	}
 }
 
 func (kv *ShardKV) PutAppend(args *PutAppendArgs, reply *PutAppendReply) {
-	// Your code here.
+	op := Op{
+		Key: args.Key,
+		Value: args.Value,
+		Op: args.Op,
+		Tag: args.Tag,
+		PrevTag: args.PrevTag,
+		ResultCh: make(chan Result, 1),
+	}
+	kv.requestCh <- op
+
+	t := time.NewTimer(100*time.Millisecond)
+	select {
+	case <- t.C:
+		reply.Err = ErrTimeout
+	case result :=<- op.ResultCh:
+		reply.WrongLeader = result.WrongLeader
+		reply.Err = result.Err
+		DPrintf("ShardKV.PutAppend: %v", result)
+	}
 }
 
 //
@@ -46,6 +186,7 @@ func (kv *ShardKV) PutAppend(args *PutAppendArgs, reply *PutAppendReply) {
 func (kv *ShardKV) Kill() {
 	kv.rf.Kill()
 	// Your code here, if desired.
+	kv.exitCh <- false
 }
 
 
@@ -97,6 +238,12 @@ func StartServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persister,
 	kv.applyCh = make(chan raft.ApplyMsg)
 	kv.rf = raft.Make(servers, me, persister, kv.applyCh)
 
+	kv.keyValue = make(map[string]string)
+	kv.pending = make(map[int64]chan Result)
+	kv.cache = make(map[int64]Result)
+	kv.exitCh = make(chan bool)
+	kv.requestCh = make(chan Op)
+	go kv.background()
 
 	return kv
 }

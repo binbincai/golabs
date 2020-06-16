@@ -8,10 +8,13 @@ package shardkv
 // talks to the group that holds the key's shard.
 //
 
-import "labrpc"
+import (
+	"github.com/binbincai/golabs/src/labrpc"
+	"sync"
+)
 import "crypto/rand"
 import "math/big"
-import "shardmaster"
+import "github.com/binbincai/golabs/src/shardmaster"
 import "time"
 
 //
@@ -39,7 +42,11 @@ type Clerk struct {
 	sm       *shardmaster.Clerk
 	config   shardmaster.Config
 	make_end func(string) *labrpc.ClientEnd
+
 	// You will have to modify this struct.
+	mu sync.Mutex
+	prevTag int64
+	prefers map[int]int
 }
 
 //
@@ -56,7 +63,20 @@ func MakeClerk(masters []*labrpc.ClientEnd, make_end func(string) *labrpc.Client
 	ck.sm = shardmaster.MakeClerk(masters)
 	ck.make_end = make_end
 	// You'll have to add code here.
+	ck.prefers = make(map[int]int)
 	return ck
+}
+
+func (ck *Clerk) getPrevTag() int64 {
+	ck.mu.Lock()
+	defer ck.mu.Unlock()
+	return ck.prevTag
+}
+
+func (ck *Clerk) setPrevTag(tag int64) {
+	ck.mu.Lock()
+	defer ck.mu.Unlock()
+	ck.prevTag = tag
 }
 
 //
@@ -68,14 +88,21 @@ func MakeClerk(masters []*labrpc.ClientEnd, make_end func(string) *labrpc.Client
 func (ck *Clerk) Get(key string) string {
 	args := GetArgs{}
 	args.Key = key
+	args.Tag = nrand()
+	args.PrevTag = ck.getPrevTag()
 
 	for {
 		shard := key2shard(key)
 		gid := ck.config.Shards[shard]
 		if servers, ok := ck.config.Groups[gid]; ok {
 			// try each server for the shard.
+			ck.mu.Lock()
+			prefer := ck.prefers[gid]
+			server := prefer
+			ck.mu.Unlock()
 			for si := 0; si < len(servers); si++ {
-				srv := ck.make_end(servers[si])
+				server = (prefer+si)/len(servers)
+				srv := ck.make_end(servers[server])
 				var reply GetReply
 				ok := srv.Call("ShardKV.Get", &args, &reply)
 				if ok && reply.WrongLeader == false && (reply.Err == OK || reply.Err == ErrNoKey) {
@@ -85,12 +112,16 @@ func (ck *Clerk) Get(key string) string {
 					break
 				}
 			}
+			ck.mu.Lock()
+			ck.prefers[gid] = server
+			ck.mu.Unlock()
 		}
 		time.Sleep(100 * time.Millisecond)
 		// ask master for the latest configuration.
 		ck.config = ck.sm.Query(-1)
 	}
 
+	ck.setPrevTag(args.Tag)
 	return ""
 }
 
@@ -103,14 +134,20 @@ func (ck *Clerk) PutAppend(key string, value string, op string) {
 	args.Key = key
 	args.Value = value
 	args.Op = op
-
+	args.Tag = nrand()
+	args.PrevTag = ck.getPrevTag()
 
 	for {
 		shard := key2shard(key)
 		gid := ck.config.Shards[shard]
 		if servers, ok := ck.config.Groups[gid]; ok {
+			ck.mu.Lock()
+			prefer := ck.prefers[gid]
+			server := prefer
+			ck.mu.Unlock()
 			for si := 0; si < len(servers); si++ {
-				srv := ck.make_end(servers[si])
+				server = (prefer+si)/len(servers)
+				srv := ck.make_end(servers[server])
 				var reply PutAppendReply
 				ok := srv.Call("ShardKV.PutAppend", &args, &reply)
 				if ok && reply.WrongLeader == false && reply.Err == OK {
@@ -120,11 +157,16 @@ func (ck *Clerk) PutAppend(key string, value string, op string) {
 					break
 				}
 			}
+			ck.mu.Lock()
+			ck.prefers[gid] = server
+			ck.mu.Unlock()
 		}
 		time.Sleep(100 * time.Millisecond)
 		// ask master for the latest configuration.
 		ck.config = ck.sm.Query(-1)
 	}
+
+	ck.setPrevTag(args.Tag)
 }
 
 func (ck *Clerk) Put(key string, value string) {

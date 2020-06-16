@@ -1,6 +1,6 @@
 package shardkv
 
-import "linearizability"
+import "github.com/binbincai/golabs/src/linearizability"
 
 import "testing"
 import "strconv"
