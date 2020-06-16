@@ -17,6 +17,7 @@ type Clerk struct {
 	// Your data here.
 	mu sync.Mutex
 	preferIndex int
+	prevTag int64
 }
 
 func nrand() int64 {
@@ -34,8 +35,6 @@ func MakeClerk(servers []*labrpc.ClientEnd) *Clerk {
 }
 
 func (ck *Clerk) replicaCall(rpcCallback func(*labrpc.ClientEnd) bool) {
-	DPrintf("Clerk.replicaCall start")
-	defer DPrintf("Clerk.replicaCall end")
 	ck.mu.Lock()
 	preferIndex := ck.preferIndex
 	serverIndex := preferIndex
@@ -49,7 +48,6 @@ func (ck *Clerk) replicaCall(rpcCallback func(*labrpc.ClientEnd) bool) {
 	for {
 		for offset:=0; offset<len(ck.servers); offset++ {
 			serverIndex = (preferIndex+offset)%len(ck.servers)
-			DPrintf("Clerk.replicaCall server index: %d ", serverIndex)
 			if rpcCallback(ck.servers[serverIndex]) {
 				return
 			}
@@ -58,18 +56,31 @@ func (ck *Clerk) replicaCall(rpcCallback func(*labrpc.ClientEnd) bool) {
 	}
 }
 
+func (ck *Clerk) getPrevTag() int64 {
+	ck.mu.Lock()
+	defer ck.mu.Unlock()
+	return ck.prevTag
+}
+
+func (ck *Clerk) setPrevTag(tag int64) {
+	ck.mu.Lock()
+	defer ck.mu.Unlock()
+	ck.prevTag = tag
+}
+
 func (ck *Clerk) Query(num int) Config {
 	args := &QueryArgs{
 		Num: num,
 		Tag: nrand(),
+		PrevTag: ck.getPrevTag(),
 	}
 	repl := &QueryReply{}
 	ck.replicaCall(func(server *labrpc.ClientEnd) bool {
 		repl = &QueryReply{}
 		ok := server.Call("ShardMaster.Query", args, repl)
-		DPrintf("Clerk.Query, ok: %v, err: %v, tag: %d", ok, repl.Err, args.Tag)
 		return ok && repl.Err == ""
 	})
+	ck.setPrevTag(args.Tag)
 	return repl.Config
 }
 
@@ -77,31 +88,31 @@ func (ck *Clerk) Join(servers map[int][]string) {
 	args := &JoinArgs{
 		Servers: servers,
 		Tag: nrand(),
+		PrevTag: ck.getPrevTag(),
 	}
 	repl := &JoinReply{}
 	// Your code here.
 	ck.replicaCall(func(server *labrpc.ClientEnd) bool {
 		repl = &JoinReply{}
 		ok := server.Call("ShardMaster.Join", args, repl)
-		DPrintf("Clerk.Join, err: %v, tag: %d", repl.Err, args.Tag)
-		//return ok && repl.Err == false
 		return ok && repl.Err == ""
 	})
+	ck.setPrevTag(args.Tag)
 }
 
 func (ck *Clerk) Leave(gids []int) {
 	args := &LeaveArgs{
 		GIDs: gids,
 		Tag: nrand(),
+		PrevTag: ck.getPrevTag(),
 	}
 	repl := &LeaveReply{}
 	ck.replicaCall(func(server *labrpc.ClientEnd) bool {
 		repl = &LeaveReply{}
 		ok := server.Call("ShardMaster.Leave", args, &repl)
-		DPrintf("Clerk.Join, err: %v, tag: %d", repl.Err, args.Tag)
-		//return ok && repl.WrongLeader == false
 		return ok && repl.Err == ""
 	})
+	ck.setPrevTag(args.Tag)
 }
 
 func (ck *Clerk) Move(shard int, gid int) {
@@ -109,13 +120,13 @@ func (ck *Clerk) Move(shard int, gid int) {
 		Shard: shard,
 		GID: gid,
 		Tag: nrand(),
+		PrevTag: ck.getPrevTag(),
 	}
 	repl := &MoveReply{}
 	ck.replicaCall(func(server *labrpc.ClientEnd) bool {
 		repl = &MoveReply{}
 		ok := server.Call("ShardMaster.Move", args, &repl)
-		DPrintf("Clerk.Move, ok: %v, err: %v, tag: %d", ok, repl.Err, args.Tag)
-		//return ok && repl.WrongLeader == false
 		return ok && repl.Err == ""
 	})
+	ck.setPrevTag(args.Tag)
 }

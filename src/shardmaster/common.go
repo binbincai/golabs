@@ -32,7 +32,10 @@ func copyConfig(config Config) Config {
 	c := Config{
 		Num: config.Num,
 		Shards: config.Shards,
-		Groups: config.Groups,
+		Groups: make(map[int][]string),
+	}
+	for k, v := range config.Groups {
+		c.Groups[k] = v
 	}
 	return c
 }
@@ -46,6 +49,7 @@ type Err string
 type JoinArgs struct {
 	Servers map[int][]string // new GID -> servers mappings
 	Tag int64
+	PrevTag int64
 }
 
 type JoinReply struct {
@@ -55,6 +59,7 @@ type JoinReply struct {
 type LeaveArgs struct {
 	GIDs []int
 	Tag int64
+	PrevTag int64
 }
 
 type LeaveReply struct {
@@ -65,6 +70,7 @@ type MoveArgs struct {
 	Shard int
 	GID   int
 	Tag int64
+	PrevTag int64
 }
 
 type MoveReply struct {
@@ -74,6 +80,7 @@ type MoveReply struct {
 type QueryArgs struct {
 	Num int // desired config number
 	Tag int64
+	PrevTag int64
 }
 
 type QueryReply struct {

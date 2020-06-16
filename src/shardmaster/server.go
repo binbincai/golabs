@@ -4,7 +4,6 @@ import (
 	"github.com/binbincai/golabs/src/labgob"
 	"github.com/binbincai/golabs/src/labrpc"
 	"github.com/binbincai/golabs/src/raft"
-	"log"
 	"sync"
 	"time"
 )
@@ -19,6 +18,9 @@ type ShardMaster struct {
 	configs []Config
 	raft *raft.Raft
 	exitCh chan bool
+	requestCh chan *Op
+	pending map[int64]chan ResultMsg
+	cache map[int64]ResultMsg
 }
 
 type Op struct {
@@ -27,12 +29,13 @@ type Op struct {
 	LeaveArgs *LeaveArgs
 	MoveArgs  *MoveArgs
 	QueryArgs *QueryArgs
+	Tag int64
+	PrevTag int64
 
 	ResultMsgCh chan ResultMsg
 }
 
 type ResultMsg struct {
-	WrongLeader bool
 	Err         Err
 	Config      Config
 
@@ -40,23 +43,22 @@ type ResultMsg struct {
 	Term int
 }
 
-
-const Debug = 1
-
-func DPrintf(format string, a ...interface{}) (n int, err error) {
-	if Debug > 0 {
-		log.Printf(format, a...)
-	}
-	return
-}
-
 func (sm *ShardMaster) moveShards(config *Config) {
-	GroupCnt := len(config.Groups)
-	for shard := range config.Shards {
-		config.Shards[shard] = shard%GroupCnt+1
+	// TODO: 目前使用简单的取余方法分shard.
+	groups := make([]int, 0)
+	for group, _ := range config.Groups {
+		groups = append(groups, group)
 	}
-	configNum := len(sm.configs)
-	DPrintf("Shards after movement: %v, num: %d, groups: %d", config.Shards, configNum, len(config.Groups))
+	groupCnt := len(groups)
+	if groupCnt == 0 {
+		for shard := range config.Shards {
+			config.Shards[shard] = 0
+		}
+		return
+	}
+	for shard := range config.Shards {
+		config.Shards[shard] = groups[shard%groupCnt]
+	}
 }
 
 func (sm *ShardMaster) apply(applyMsg raft.ApplyMsg)  {
@@ -66,16 +68,19 @@ func (sm *ShardMaster) apply(applyMsg raft.ApplyMsg)  {
 		return
 	}
 
-	repl := ResultMsg{
-		Index: applyMsg.CommandIndex,
-		Term: applyMsg.CommandTerm,
-	}
-
-	nc := copyConfig(sm.configs[len(sm.configs)-1])
 	op, ok := applyMsg.Command.(*Op)
 	if !ok {
 		return
 	}
+	if _, ok := sm.cache[op.Tag]; ok {
+		return
+	}
+
+	repl := ResultMsg{
+		Index: applyMsg.CommandIndex,
+		Term: applyMsg.CommandTerm,
+	}
+	nc := copyConfig(sm.configs[len(sm.configs)-1])
 
 	if op.JoinArgs != nil {
 		args := op.JoinArgs
@@ -83,114 +88,137 @@ func (sm *ShardMaster) apply(applyMsg raft.ApplyMsg)  {
 			nc.Groups[gid] = servers
 		}
 		sm.moveShards(&nc)
+		nc.Num = len(sm.configs)+1
+		sm.configs = append(sm.configs, nc)
 	}
 
 	if op.LeaveArgs != nil {
-		DPrintf("Leave before: %v", nc.Groups)
 		args := op.LeaveArgs
 		for _, gid := range args.GIDs {
 			delete(nc.Groups, gid)
 		}
 		sm.moveShards(&nc)
-		DPrintf("Leave args: %v, %v", args, nc.Groups)
+		nc.Num = len(sm.configs)+1
+		sm.configs = append(sm.configs, nc)
 	}
 
 	if op.MoveArgs != nil {
 		args := op.MoveArgs
 		nc.Shards[args.Shard] = args.GID
+		nc.Num = len(sm.configs)+1
+		sm.configs = append(sm.configs, nc)
 	}
 
 	if op.QueryArgs != nil {
 		args := op.QueryArgs
 		if args.Num == -1 || args.Num > len(sm.configs) {
-			configNum := len(sm.configs)
-			repl.Config = copyConfig(sm.configs[configNum-1])
-			DPrintf("Shards 2: %v, req num: %d, config num: %d", repl.Config.Shards, args.Num, configNum)
+			repl.Config = copyConfig(sm.configs[len(sm.configs)-1])
+		} else if args.Num == 0 {
+			repl.Config = Config{}
 		} else {
 			repl.Config = copyConfig(sm.configs[args.Num-1])
-			DPrintf("Shards 1: %v, req num: %d, config num: %d", repl.Config.Shards, args.Num, len(sm.configs))
 		}
 	}
 
-	sm.configs = append(sm.configs, nc)
-	op.ResultMsgCh <- repl
-	close(op.ResultMsgCh)
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+	if resultMsgCh, ok := sm.pending[op.Tag]; ok {
+		resultMsgCh <- repl
+		close(resultMsgCh)
+		delete(sm.pending, op.Tag)
+	}
 }
 
-func (sm *ShardMaster) backgroundExec() {
+func (sm *ShardMaster) request(op *Op) {
+	DPrintf("ShardMaster.request start")
+	defer DPrintf("ShardMaster.request end")
+	sm.mu.Lock()
+	if repl, ok := sm.cache[op.Tag]; ok {
+		op.ResultMsgCh <- repl
+		return
+	}
+	delete(sm.cache, op.PrevTag)
+	sm.mu.Unlock()
+
+	_, _, isLeader := sm.rf.Start(op)
+	if !isLeader {
+		op.ResultMsgCh <- ResultMsg{
+			Err: "Wrong leader",
+		}
+		return
+	}
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+	sm.pending[op.Tag] = op.ResultMsgCh
+}
+
+func (sm *ShardMaster) background() {
 	for {
 		select {
 		case <- sm.exitCh:
 			break
 		case applyMsg := <- sm.applyCh:
 			sm.apply(applyMsg)
+		case requestOp := <- sm.requestCh:
+			go sm.request(requestOp)
 		}
 	}
 }
 
-func (sm *ShardMaster) waitExec(op *Op) ResultMsg {
-	resultMsg := ResultMsg{}
+func (sm *ShardMaster) waitExec(op *Op) (resultMsg ResultMsg) {
 	op.ResultMsgCh = make(chan ResultMsg, 1)
-	index, term, isLeader := sm.rf.Start(op)
-	if !isLeader {
-		resultMsg.Err = "Wrong leader"
-		return resultMsg
-	}
-	resultMsg.Err = ""
+	sm.requestCh <- op
 
 	t := time.NewTimer(150*time.Millisecond)
 	select {
-	case <- t.C:
+	case <-t.C:
 		resultMsg.Err = "Command execute timeout"
 	case resultMsg = <- op.ResultMsgCh:
 		t.Stop()
-		if !(index == resultMsg.Index && term == resultMsg.Term) {
-			resultMsg.Err = "Command collision happened"
-		}
 	}
 
-	return resultMsg
+	return
 }
 
 func (sm *ShardMaster) Join(args *JoinArgs, reply *JoinReply) {
-	DPrintf("ShardMaster.Join start")
 	// Your code here.
 	op := &Op{}
 	op.JoinArgs = args
+	op.Tag = args.Tag
+	op.PrevTag = args.PrevTag
 	resultMsg := sm.waitExec(op)
 	reply.Err = resultMsg.Err
-	DPrintf("ShardMaster.Join end, err: %v, me: %d, tag: %d", reply.Err, sm.me, args.Tag)
 }
 
 func (sm *ShardMaster) Leave(args *LeaveArgs, reply *LeaveReply) {
-	DPrintf("ShardMaster.Leave start")
 	// Your code here.
 	op := &Op{}
 	op.LeaveArgs = args
+	op.Tag = args.Tag
+	op.PrevTag = args.PrevTag
 	resultMsg := sm.waitExec(op)
 	reply.Err = resultMsg.Err
-	DPrintf("ShardMaster.Leave end, err: %v, me: %d, tag: %d", reply.Err, sm.me, args.Tag)
 }
 
 func (sm *ShardMaster) Move(args *MoveArgs, reply *MoveReply) {
-	DPrintf("ShardMaster.Move start")
 	// Your code here.
 	op := &Op{}
 	op.MoveArgs = args
+	op.Tag = args.Tag
+	op.PrevTag = args.PrevTag
 	resultMsg := sm.waitExec(op)
 	reply.Err = resultMsg.Err
-	DPrintf("ShardMaster.Move end, err: %v, me: %d, tag: %d", reply.Err, sm.me, args.Tag)
 }
 
 func (sm *ShardMaster) Query(args *QueryArgs, reply *QueryReply) {
-	DPrintf("ShardMaster.Query start")
 	// Your code here.
 	op := &Op{}
 	op.QueryArgs = args
+	op.Tag = args.Tag
+	op.PrevTag = args.PrevTag
 	resultMsg := sm.waitExec(op)
 	reply.Err = resultMsg.Err
 	reply.Config = resultMsg.Config
-	DPrintf("ShardMaster.Query end, err: %v, me: %d, tag: %d", reply.Err, sm.me, args.Tag)
 }
 
 //
@@ -203,6 +231,7 @@ func (sm *ShardMaster) Kill() {
 	// Your code here, if desired.
 	sm.exitCh <- false
 	sm.rf.Kill()
+	DPrintf("ShardMaster.Kill")
 }
 
 // needed by shardkv tester
@@ -223,13 +252,17 @@ func StartServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persister)
 	sm.configs = make([]Config, 1)
 	sm.configs[0].Groups = map[int][]string{}
 
-	labgob.Register(Op{})
+	labgob.Register(&Op{})
 
 	sm.applyCh = make(chan raft.ApplyMsg)
 	sm.exitCh = make(chan bool)
+	sm.requestCh = make(chan *Op)
+	sm.pending = make(map[int64]chan ResultMsg)
+	sm.cache = make(map[int64]ResultMsg)
+	go sm.background()
+
 	sm.rf = raft.Make(servers, me, persister, sm.applyCh)
 
-	go sm.backgroundExec()
-
+	DPrintf("StartServer")
 	return sm
 }

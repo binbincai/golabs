@@ -54,7 +54,7 @@ func check(t *testing.T, groups []int, ck *Clerk) {
 
 func check_same_config(t *testing.T, c1 Config, c2 Config) {
 	if c1.Num != c2.Num {
-		t.Fatalf("Num wrong")
+		t.Fatalf("Num wrong, c1.Num: %d, c2.Num: %d", c1.Num, c2.Num)
 	}
 	if c1.Shards != c2.Shards {
 		t.Fatalf("Shards wrong")
