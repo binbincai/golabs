@@ -86,6 +86,8 @@ func (ck *Clerk) setPrevTag(tag int64) {
 // You will have to modify this function.
 //
 func (ck *Clerk) Get(key string) string {
+	DPrintf("Clerk.Get start")
+	defer DPrintf("Clerk.Get end")
 	args := GetArgs{}
 	args.Key = key
 	args.Tag = nrand()
@@ -101,9 +103,10 @@ func (ck *Clerk) Get(key string) string {
 			server := prefer
 			ck.mu.Unlock()
 			for si := 0; si < len(servers); si++ {
-				server = (prefer+si)/len(servers)
+				server = (prefer+si)%len(servers)
 				srv := ck.make_end(servers[server])
 				var reply GetReply
+				DPrintf("Clerk.Get call server %d of total %d", server, len(servers))
 				ok := srv.Call("ShardKV.Get", &args, &reply)
 				if ok && reply.WrongLeader == false && (reply.Err == OK || reply.Err == ErrNoKey) {
 					return reply.Value
@@ -130,6 +133,8 @@ func (ck *Clerk) Get(key string) string {
 // You will have to modify this function.
 //
 func (ck *Clerk) PutAppend(key string, value string, op string) {
+	DPrintf("Clerk.PutAppend start")
+	defer DPrintf("Clerk.PutAppend end")
 	args := PutAppendArgs{}
 	args.Key = key
 	args.Value = value
@@ -146,9 +151,10 @@ func (ck *Clerk) PutAppend(key string, value string, op string) {
 			server := prefer
 			ck.mu.Unlock()
 			for si := 0; si < len(servers); si++ {
-				server = (prefer+si)/len(servers)
+				server = (prefer+si)%len(servers)
 				srv := ck.make_end(servers[server])
 				var reply PutAppendReply
+				DPrintf("Clerk.PutAppend call server %d of total %d", server, len(servers))
 				ok := srv.Call("ShardKV.PutAppend", &args, &reply)
 				if ok && reply.WrongLeader == false && reply.Err == OK {
 					return

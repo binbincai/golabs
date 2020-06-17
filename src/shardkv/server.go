@@ -50,8 +50,8 @@ type ShardKV struct {
 }
 
 func (kv *ShardKV) apply(applyMsg raft.ApplyMsg) {
-	DPrintf("ShardKV.apply start")
-	defer DPrintf("ShardKV.apply end")
+	DPrintf("ShardKV.apply start, me: %d", kv.me)
+	defer DPrintf("ShardKV.apply end, me: %d", kv.me)
 	if !applyMsg.CommandValid {
 		return
 	}
@@ -96,17 +96,18 @@ func (kv *ShardKV) apply(applyMsg raft.ApplyMsg) {
 		resultCh <- resultMsg
 		close(resultCh)
 		delete(kv.pending, op.Tag)
-		DPrintf("ShardKV.apply result: %v", resultMsg)
+		DPrintf("ShardKV.apply result: %v, me: %d", resultMsg, kv.me)
 	}
 	kv.cache[op.Tag] = resultMsg
 }
 
 func (kv *ShardKV) request(op Op) {
-	DPrintf("ShardKV.request start")
-	defer DPrintf("ShardKV.request end")
+	DPrintf("ShardKV.request start, me: %d", kv.me)
+	defer DPrintf("ShardKV.request end, me: %d", kv.me)
 	_, _, isLeader := kv.rf.Start(op)
 	if !isLeader {
 		op.ResultCh <- Result{WrongLeader: true}
+		DPrintf("ShardKV.request wrong leader, me: %d", kv.me)
 		return
 	}
 
@@ -151,7 +152,7 @@ func (kv *ShardKV) Get(args *GetArgs, reply *GetReply) {
 		reply.WrongLeader = result.WrongLeader
 		reply.Value = result.Value
 		reply.Err = result.Err
-		DPrintf("ShardKV.Get: %v", result)
+		DPrintf("ShardKV.Get: %v, me: %d", result, kv.me)
 	}
 }
 
@@ -173,7 +174,7 @@ func (kv *ShardKV) PutAppend(args *PutAppendArgs, reply *PutAppendReply) {
 	case result :=<- op.ResultCh:
 		reply.WrongLeader = result.WrongLeader
 		reply.Err = result.Err
-		DPrintf("ShardKV.PutAppend: %v", result)
+		DPrintf("ShardKV.PutAppend: %v, me: %d", result, kv.me)
 	}
 }
 
@@ -187,6 +188,7 @@ func (kv *ShardKV) Kill() {
 	kv.rf.Kill()
 	// Your code here, if desired.
 	kv.exitCh <- false
+	DPrintf("ShardKV.Kill me: %d", kv.me)
 }
 
 
@@ -245,5 +247,6 @@ func StartServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persister,
 	kv.requestCh = make(chan Op)
 	go kv.background()
 
+	DPrintf("StartServer me: %d", kv.me)
 	return kv
 }
