@@ -1,14 +1,15 @@
 package shardkv
 
 
-// import "shardmaster"
 import (
 	"github.com/binbincai/golabs/src/labrpc"
+	"github.com/binbincai/golabs/src/raft"
+	"github.com/binbincai/golabs/src/labgob"
+	"github.com/binbincai/golabs/src/shardmaster"
+
 	"time"
+	"sync"
 )
-import "github.com/binbincai/golabs/src/raft"
-import "sync"
-import "github.com/binbincai/golabs/src/labgob"
 
 
 
@@ -47,6 +48,8 @@ type ShardKV struct {
 	cache map[int64]Result
 	exitCh chan bool
 	requestCh chan Op
+
+	config shardmaster.Config
 }
 
 func (kv *ShardKV) apply(applyMsg raft.ApplyMsg) {
@@ -58,6 +61,11 @@ func (kv *ShardKV) apply(applyMsg raft.ApplyMsg) {
 
 	op, ok := applyMsg.Command.(Op)
 	if !ok {
+		return
+	}
+
+	shard := key2shard(op.Key)
+	if kv.config.Shards[shard] != kv.gid {
 		return
 	}
 
@@ -111,6 +119,16 @@ func (kv *ShardKV) request(op Op) {
 		return
 	}
 
+	shard := key2shard(op.Key)
+	kv.mu.Lock()
+	cGID := kv.config.Shards[shard]
+	kv.mu.Unlock()
+	if cGID != kv.gid {
+		op.ResultCh <- Result{Err: ErrWrongGroup}
+		DPrintf("ShardKV.request wrong group, me: %d, gid: %d", kv.me, kv.gid)
+		return
+	}
+
 	kv.mu.Lock()
 	defer kv.mu.Unlock()
 	if result, ok := kv.cache[op.Tag]; ok {
@@ -122,8 +140,25 @@ func (kv *ShardKV) request(op Op) {
 	// TODO: 清理cache
 }
 
+func (kv *ShardKV) fetchConfig() {
+	ck := shardmaster.MakeClerk(kv.masters)
+	config := ck.Query(-1)
+	kv.mu.Lock()
+	defer kv.mu.Unlock()
+	if kv.config.Num == config.Num {
+		return
+	}
+	kv.config = config
+}
+
 func (kv *ShardKV) background() {
+	go kv.fetchConfig()
+	var t *time.Timer
 	for {
+		if t != nil {
+			t.Stop()
+		}
+		t = time.NewTimer(100*time.Millisecond)
 		select {
 		case <- kv.exitCh:
 			break
@@ -131,6 +166,8 @@ func (kv *ShardKV) background() {
 			kv.apply(applyMsg)
 		case requestMsg := <- kv.requestCh:
 			go kv.request(requestMsg)
+		case <- t.C:
+			go kv.fetchConfig()
 		}
 	}
 }

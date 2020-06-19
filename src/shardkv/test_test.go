@@ -133,6 +133,7 @@ func TestJoinLeave(t *testing.T) {
 	cfg.ShutdownGroup(0)
 
 	for i := 0; i < n; i++ {
+		fmt.Println("check", i)
 		check(t, ck, ka[i], va[i])
 	}
 
