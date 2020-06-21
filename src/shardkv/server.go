@@ -185,7 +185,7 @@ func (kv *ShardKV) syncConfig() {
 		Op: "Config",
 		Config: config,
 		Tag: nrand(),
-		ResultCh: make(chan Result),
+		ResultCh: make(chan Result, 1),
 	}
 	func() {
 		kv.mu.Unlock()
@@ -238,7 +238,7 @@ func (kv *ShardKV) migrateTrigger() {
 				KeyValues: keyValues,
 				Tag: nrand(),
 				ShardTag: nrand(),
-				ResultCh: make(chan Result),
+				ResultCh: make(chan Result, 1),
 			}
 			kv.requestCh <- op
 			t := time.NewTimer(100*time.Second)
@@ -323,7 +323,7 @@ func (kv *ShardKV) migrateSend() {
 				Op:        "MigrateFinish",
 				Shard:     shard,
 				Tag: nrand(),
-				ResultCh: make(chan Result),
+				ResultCh: make(chan Result, 1),
 			}
 			kv.requestCh <- op
 			t := time.NewTimer(time.Second)
