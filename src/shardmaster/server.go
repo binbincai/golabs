@@ -62,8 +62,6 @@ func (sm *ShardMaster) moveShards(config *Config) {
 }
 
 func (sm *ShardMaster) apply(applyMsg raft.ApplyMsg)  {
-	DPrintf("ShardMaster.apply start")
-	defer DPrintf("ShardMaster.apply end")
 	if !applyMsg.CommandValid {
 		return
 	}
@@ -75,6 +73,14 @@ func (sm *ShardMaster) apply(applyMsg raft.ApplyMsg)  {
 	if _, ok := sm.cache[op.Tag]; ok {
 		return
 	}
+	DPrintf("ShardMaster.apply start, join: %v, leave: %v, query: %v",
+		op.JoinArgs!=nil, op.LeaveArgs!=nil, op.QueryArgs!=nil)
+	defer func() {
+		DPrintf("ShardMaster.apply end, cfg cnt: %d", len(sm.configs))
+		for i, config := range sm.configs {
+			DPrintf("\tconfig %d: %v", i, config)
+		}
+	}()
 
 	repl := ResultMsg{
 		Index: applyMsg.CommandIndex,
