@@ -106,18 +106,19 @@ func (ck *Clerk) Get(key string) string {
 				server = (prefer+si)%len(servers)
 				srv := ck.make_end(servers[server])
 				var reply GetReply
-				DPrintf("Clerk.Get call server %d of total %d", server, len(servers))
+				DPrintf("Clerk.Get call server %d of total %d, shard: %d, gid: %d",
+					server, len(servers), shard, gid)
 				ok := srv.Call("ShardKV.Get", &args, &reply)
 				if ok && reply.WrongLeader == false && (reply.Err == OK || reply.Err == ErrNoKey) {
+					ck.mu.Lock()
+					ck.prefers[gid] = server
+					ck.mu.Unlock()
 					return reply.Value
 				}
 				if ok && (reply.Err == ErrWrongGroup) {
 					break
 				}
 			}
-			ck.mu.Lock()
-			ck.prefers[gid] = server
-			ck.mu.Unlock()
 		}
 		time.Sleep(100 * time.Millisecond)
 		// ask master for the latest configuration.
@@ -154,18 +155,19 @@ func (ck *Clerk) PutAppend(key string, value string, op string) {
 				server = (prefer+si)%len(servers)
 				srv := ck.make_end(servers[server])
 				var reply PutAppendReply
-				DPrintf("Clerk.PutAppend call server %d of total %d", server, len(servers))
+				DPrintf("Clerk.PutAppend call server %d of total %d, shard: %d, gid: %d",
+					server, len(servers), shard, gid)
 				ok := srv.Call("ShardKV.PutAppend", &args, &reply)
 				if ok && reply.WrongLeader == false && reply.Err == OK {
+					ck.mu.Lock()
+					ck.prefers[gid] = server
+					ck.mu.Unlock()
 					return
 				}
 				if ok && reply.Err == ErrWrongGroup {
 					break
 				}
 			}
-			ck.mu.Lock()
-			ck.prefers[gid] = server
-			ck.mu.Unlock()
 		}
 		time.Sleep(100 * time.Millisecond)
 		// ask master for the latest configuration.

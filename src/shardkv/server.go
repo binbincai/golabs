@@ -18,11 +18,14 @@ type Op struct {
 	// otherwise RPC will break.
 	Op string
 
+	// Get/Put/Append
 	Key string
 	Value string
 
+	// Config
 	Config shardmaster.Config
 
+	// MigrateShard
 	Shard int
 	KeyValues map[string]string
 	ShardTag int64
@@ -79,8 +82,10 @@ func (kv *ShardKV) requestUser(op Op) bool {
 	cGID := kv.config.Shards[shard]
 	kv.mu.Unlock()
 	if cGID != kv.gid {
+		DAssert(op.ResultCh != nil)
 		op.ResultCh <- Result{Err: ErrWrongGroup}
-		DPrintf("ShardKV.request wrong group, me: %d, gid: %d", kv.me, kv.gid)
+		close(op.ResultCh)
+		DPrintf("ShardKV.requestUser wrong group, me: %d, gid: %d", kv.me, kv.gid)
 		return false
 	}
 	return true
@@ -101,6 +106,7 @@ func (kv *ShardKV) request(op Op) {
 	DPrintf("ShardKV.request lock, me: %d, gid: %d, op: %s, tag: %d",
 		kv.me, kv.gid, op.Op, op.Tag)
 	if cache {
+		DAssert(op.ResultCh != nil)
 		op.ResultCh <- result
 		close(op.ResultCh)
 		return
@@ -117,9 +123,10 @@ func (kv *ShardKV) request(op Op) {
 		}
 	}
 
-	isLeader := kv.rf.IsLeader()
-	if !isLeader {
+	if !kv.rf.IsLeader() {
+		DAssert(op.ResultCh != nil)
 		op.ResultCh <- Result{WrongLeader: true}
+		close(op.ResultCh)
 		DPrintf("ShardKV.request wrong leader, me: %d, gid: %d, op: %s, tag: %d",
 			kv.me, kv.gid, op.Op, op.Tag)
 		return
@@ -192,6 +199,7 @@ func (kv *ShardKV) syncConfig() {
 		defer kv.mu.Lock()
 		kv.requestCh <- op
 
+		DAssert(op.ResultCh != nil)
 		t := time.NewTimer(time.Second)
 		select {
 		case <- t.C:
@@ -205,6 +213,7 @@ func (kv *ShardKV) migrateTrigger() {
 	if !kv.rf.IsLeader() {
 		return
 	}
+
 	kv.mu.Lock()
 	migrateTriggering := kv.migrateTriggering
 	defer func () {
@@ -221,6 +230,7 @@ func (kv *ShardKV) migrateTrigger() {
 	if len(kv.migrate) == 0 {
 		return
 	}
+
 	for shard, keyValues := range kv.migrate {
 		func () {
 			DPrintf("ShardKV.migrateTrigger start, me: %d, gid: %d, shard: %d",
@@ -242,6 +252,7 @@ func (kv *ShardKV) migrateTrigger() {
 			}
 			kv.requestCh <- op
 			t := time.NewTimer(100*time.Second)
+			DAssert(op.ResultCh != nil)
 			select {
 			case <- t.C:
 			case <- op.ResultCh:
@@ -327,6 +338,7 @@ func (kv *ShardKV) migrateSend() {
 			}
 			kv.requestCh <- op
 			t := time.NewTimer(time.Second)
+			DAssert(op.ResultCh != nil)
 			select {
 			case <- t.C:
 			case <- op.ResultCh:
@@ -362,9 +374,11 @@ func (kv *ShardKV) backgroundSync() {
 func (kv *ShardKV) getKeyValues(key string) map[string]string {
 	shard := key2shard(key)
 	if keyValue, ok := kv.own[shard]; ok {
+		DAssert(keyValue != nil)
 		return keyValue
 	}
 	if keyValue, ok := kv.migrate[shard]; ok {
+		DAssert(keyValue != nil)
 		return keyValue
 	}
 	return nil
@@ -479,8 +493,10 @@ func (kv *ShardKV) applyMigrateReceive(op Op) Result {
 		Err: OK,
 	}
 	if kv.config.Shards[op.Shard] == kv.gid {
+		DAssert(op.KeyValues != nil)
 		kv.own[op.Shard] = op.KeyValues
 	} else {
+		DAssert(op.KeyValues != nil)
 		kv.migrate[op.Shard] = op.KeyValues
 		go func() {
 			kv.migrateCh <- false
@@ -491,8 +507,8 @@ func (kv *ShardKV) applyMigrateReceive(op Op) Result {
 	for shard := range kv.own {
 		ownShards = append(ownShards, shard)
 	}
-	DPrintf("ShardKV.applyMigrateReceive, me: %d, cfg num: %d, shard: %d, tag: %d, own: %v",
-		kv.me, kv.config.Num, op.Shard, op.Tag, ownShards)
+	DPrintf("ShardKV.applyMigrateReceive, me: %d, gid: %d, cfg num: %d, shard: %d, tag: %d, own: %v",
+		kv.me, kv.gid, kv.config.Num, op.Shard, op.Tag, ownShards)
 	return resultMsg
 }
 
@@ -516,8 +532,8 @@ func (kv *ShardKV) apply(applyMsg raft.ApplyMsg) {
 		return
 	}
 
-	DPrintf("ShardKV.apply start, me: %d, gid: %d, op: %s", kv.me, kv.gid, op.Op)
-	defer DPrintf("ShardKV.apply end, me: %d, gid: %d, op: %s", kv.me, kv.gid, op.Op)
+	DPrintf("ShardKV.apply start, me: %d, gid: %d, op: %s, tag: %d", kv.me, kv.gid, op.Op, op.Tag)
+	defer DPrintf("ShardKV.apply end, me: %d, gid: %d, op: %s, tag: %d", kv.me, kv.gid, op.Op, op.Tag)
 
 	// 检查是否已经处理过该请求.
 	kv.mu.Lock()
@@ -550,12 +566,16 @@ func (kv *ShardKV) apply(applyMsg raft.ApplyMsg) {
 	}
 
 	if resultCh, ok := kv.pending[op.Tag]; ok {
+		DAssert(resultCh != nil)
 		resultCh <- resultMsg
 		close(resultCh)
 		delete(kv.pending, op.Tag)
 		DPrintf("ShardKV.apply result: %v, op: %s, me: %d, gid: %d", resultMsg, op.Op, kv.me, kv.gid)
 	}
-	kv.cache[op.Tag] = resultMsg
+	// 只对成功的请求进行cache.
+	if resultMsg.Err == OK {
+		kv.cache[op.Tag] = resultMsg
+	}
 }
 
 func (kv *ShardKV) backgroundApply() {
@@ -580,6 +600,7 @@ func (kv *ShardKV) Get(args *GetArgs, reply *GetReply) {
 	kv.requestCh <- op
 
 	t := time.NewTimer(100*time.Millisecond)
+	DAssert(op.ResultCh != nil)
 	select {
 	case <- t.C:
 		reply.Err = ErrTimeout
@@ -603,13 +624,14 @@ func (kv *ShardKV) PutAppend(args *PutAppendArgs, reply *PutAppendReply) {
 	kv.requestCh <- op
 
 	t := time.NewTimer(100*time.Millisecond)
+	DAssert(op.ResultCh != nil)
 	select {
 	case <- t.C:
 		reply.Err = ErrTimeout
 	case result :=<- op.ResultCh:
 		reply.WrongLeader = result.WrongLeader
 		reply.Err = result.Err
-		DPrintf("ShardKV.PutAppend: %v, me: %d, gid: %d", result, kv.me, kv.gid)
+		DPrintf("ShardKV.PutAppend: %v, me: %d, gid: %d, tag: %d", result, kv.me, kv.gid, op.Tag)
 	}
 }
 
@@ -620,6 +642,7 @@ func (kv *ShardKV) MigrateShard(args *MigrateArgs, reply *MigrateReply) {
 		KeyValues: args.KeyValues,
 		Tag: args.Tag,
 		PrevTag: args.PrevTag,
+		ResultCh: make(chan Result, 1),
 	}
 
 	kv.requestCh <- op
@@ -627,6 +650,7 @@ func (kv *ShardKV) MigrateShard(args *MigrateArgs, reply *MigrateReply) {
 		kv.me, kv.gid, args.Tag)
 
 	t := time.NewTimer(100*time.Millisecond)
+	DAssert(op.ResultCh != nil)
 	select {
 	case <- t.C:
 		reply.Err = ErrTimeout
