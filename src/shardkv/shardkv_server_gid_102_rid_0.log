@@ -1,0 +1,466 @@
+2020-06-23T20:17:23.407+0800	INFO	lablog/lablog.go:45	StartServer
+2020-06-23T20:17:23.733+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Config, tag: 150933272585528427
+2020-06-23T20:17:23.733+0800	INFO	lablog/lablog.go:45	ShardKV.applyConfig, cfg num: 2, initial own shards: [], tag: 150933272585528427
+2020-06-23T20:17:23.733+0800	INFO	lablog/lablog.go:45	ShardKV.applyConfig, cfg num: 2, own shards: [], migrate shards: [], tag: 150933272585528427
+2020-06-23T20:17:23.733+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Config, tag: 150933272585528427
+2020-06-23T20:17:23.964+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Config, tag: 1761264379023314690
+2020-06-23T20:17:23.964+0800	INFO	lablog/lablog.go:45	ShardKV.applyConfig, cfg num: 3, own shards: [], migrate shards: [], tag: 1761264379023314690
+2020-06-23T20:17:23.964+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Config, tag: 1761264379023314690
+2020-06-23T20:17:24.544+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Config, tag: 2869906933956875654
+2020-06-23T20:17:24.544+0800	INFO	lablog/lablog.go:45	ShardKV.applyConfig, cfg num: 4, own shards: [], migrate shards: [], tag: 2869906933956875654
+2020-06-23T20:17:24.545+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Config, tag: 2869906933956875654
+2020-06-23T20:17:24.587+0800	INFO	lablog/lablog.go:45	ShardKV.request start, op: MigrateReceive, tag: 1603944349176037553
+2020-06-23T20:17:24.588+0800	INFO	lablog/lablog.go:45	ShardKV.request wrong leader, op: MigrateReceive, tag: 1603944349176037553
+2020-06-23T20:17:24.588+0800	INFO	lablog/lablog.go:45	ShardKV.request end, op: MigrateReceive, tag: 1603944349176037553
+2020-06-23T20:17:24.588+0800	INFO	lablog/lablog.go:45	ShardKV.MigrateShard, result: {true  }, shard: 2, tag: 1603944349176037553
+2020-06-23T20:17:24.603+0800	INFO	lablog/lablog.go:45	ShardKV.request start, op: MigrateReceive, tag: 4494711752116226424
+2020-06-23T20:17:24.603+0800	INFO	lablog/lablog.go:45	ShardKV.request wrong leader, op: MigrateReceive, tag: 4494711752116226424
+2020-06-23T20:17:24.603+0800	INFO	lablog/lablog.go:45	ShardKV.request end, op: MigrateReceive, tag: 4494711752116226424
+2020-06-23T20:17:24.603+0800	INFO	lablog/lablog.go:45	ShardKV.MigrateShard, result: {true  }, shard: 5, tag: 4494711752116226424
+2020-06-23T20:17:24.606+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: MigrateReceive, tag: 1603944349176037553
+2020-06-23T20:17:24.607+0800	INFO	lablog/lablog.go:45	ShardKV.applyMigrateReceive, cfg num: 4, shard: 2, tag: 1603944349176037553, owned shards: [2]
+2020-06-23T20:17:24.608+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: MigrateReceive, tag: 1603944349176037553
+2020-06-23T20:17:24.614+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: MigrateReceive, tag: 4494711752116226424
+2020-06-23T20:17:24.615+0800	INFO	lablog/lablog.go:45	ShardKV.applyMigrateReceive, cfg num: 4, shard: 5, tag: 4494711752116226424, owned shards: [2 5]
+2020-06-23T20:17:24.615+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: MigrateReceive, tag: 4494711752116226424
+2020-06-23T20:17:24.661+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: MigrateReceive, tag: 702522789280381717
+2020-06-23T20:17:24.662+0800	INFO	lablog/lablog.go:45	ShardKV.applyMigrateReceive, cfg num: 4, shard: 8, tag: 702522789280381717, owned shards: [2 5 8]
+2020-06-23T20:17:24.662+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: MigrateReceive, tag: 702522789280381717
+2020-06-23T20:17:24.684+0800	INFO	lablog/lablog.go:45	ShardKV.request start, op: Append, tag: 1026388534088341148
+2020-06-23T20:17:24.687+0800	INFO	lablog/lablog.go:45	ShardKV.request wrong leader, op: Append, tag: 1026388534088341148
+2020-06-23T20:17:24.687+0800	INFO	lablog/lablog.go:45	ShardKV.request end, op: Append, tag: 1026388534088341148
+2020-06-23T20:17:24.687+0800	INFO	lablog/lablog.go:45	ShardKV.PutAppend, key: 7, val: iJoih, result: {true  }, tag: 1026388534088341148
+2020-06-23T20:17:24.706+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 1026388534088341148
+2020-06-23T20:17:24.708+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: iJoih, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih, tag: 1026388534088341148
+2020-06-23T20:17:24.708+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 1026388534088341148
+2020-06-23T20:17:24.710+0800	INFO	lablog/lablog.go:45	ShardKV.request start, op: Append, tag: 2271945190681964969
+2020-06-23T20:17:24.710+0800	INFO	lablog/lablog.go:45	ShardKV.request wrong leader, op: Append, tag: 2271945190681964969
+2020-06-23T20:17:24.710+0800	INFO	lablog/lablog.go:45	ShardKV.request end, op: Append, tag: 2271945190681964969
+2020-06-23T20:17:24.710+0800	INFO	lablog/lablog.go:45	ShardKV.PutAppend, key: 4, val: qD5EQ, result: {true  }, tag: 2271945190681964969
+2020-06-23T20:17:24.717+0800	INFO	lablog/lablog.go:45	ShardKV.request start, op: Append, tag: 4322392364831911173
+2020-06-23T20:17:24.718+0800	INFO	lablog/lablog.go:45	ShardKV.request wrong leader, op: Append, tag: 4322392364831911173
+2020-06-23T20:17:24.718+0800	INFO	lablog/lablog.go:45	ShardKV.request end, op: Append, tag: 4322392364831911173
+2020-06-23T20:17:24.719+0800	INFO	lablog/lablog.go:45	ShardKV.PutAppend, key: 0, val: FIssq, result: {true  }, tag: 4322392364831911173
+2020-06-23T20:17:24.737+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 2271945190681964969
+2020-06-23T20:17:24.739+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 4, append value: qD5EQ, current value: OEXtm9Ighl7jIdNRRaTgGo4I6AZTIsugviprC1mPHkRihMo54clV1zqvxHVLR1tXNTv4kHmv0_wtyqgPE4zDvqD5EQ, tag: 2271945190681964969
+2020-06-23T20:17:24.739+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 2271945190681964969
+2020-06-23T20:17:24.745+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 4322392364831911173
+2020-06-23T20:17:24.746+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 0, append value: FIssq, current value: 44xwqCF2xXBCwzxeXtKNp6gaeNrGhxM6uyIqafg552TVqs8YfL9uJ7AiTOGlA4a0LPHslzSZVErk6APSIPHasFIssq, tag: 4322392364831911173
+2020-06-23T20:17:24.746+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 4322392364831911173
+2020-06-23T20:17:24.759+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 4176675144014058590
+2020-06-23T20:17:24.759+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: 4_KUM, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUM, tag: 4176675144014058590
+2020-06-23T20:17:24.762+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 4176675144014058590
+2020-06-23T20:17:24.766+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 960149826298096369
+2020-06-23T20:17:24.768+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 4, append value: 7yGZT, current value: OEXtm9Ighl7jIdNRRaTgGo4I6AZTIsugviprC1mPHkRihMo54clV1zqvxHVLR1tXNTv4kHmv0_wtyqgPE4zDvqD5EQ7yGZT, tag: 960149826298096369
+2020-06-23T20:17:24.769+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 960149826298096369
+2020-06-23T20:17:24.784+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 560762785037855119
+2020-06-23T20:17:24.784+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 0, append value: 29r6P, current value: 44xwqCF2xXBCwzxeXtKNp6gaeNrGhxM6uyIqafg552TVqs8YfL9uJ7AiTOGlA4a0LPHslzSZVErk6APSIPHasFIssq29r6P, tag: 560762785037855119
+2020-06-23T20:17:24.785+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 560762785037855119
+2020-06-23T20:17:24.785+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 2927288229293378737
+2020-06-23T20:17:24.785+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: pdqQB, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQB, tag: 2927288229293378737
+2020-06-23T20:17:24.786+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 2927288229293378737
+2020-06-23T20:17:24.796+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 364933104610907343
+2020-06-23T20:17:24.798+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 4, append value: Z2m6n, current value: OEXtm9Ighl7jIdNRRaTgGo4I6AZTIsugviprC1mPHkRihMo54clV1zqvxHVLR1tXNTv4kHmv0_wtyqgPE4zDvqD5EQ7yGZTZ2m6n, tag: 364933104610907343
+2020-06-23T20:17:24.799+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 364933104610907343
+2020-06-23T20:17:24.805+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 595294500734350972
+2020-06-23T20:17:24.806+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 0, append value: ACyyf, current value: 44xwqCF2xXBCwzxeXtKNp6gaeNrGhxM6uyIqafg552TVqs8YfL9uJ7AiTOGlA4a0LPHslzSZVErk6APSIPHasFIssq29r6PACyyf, tag: 595294500734350972
+2020-06-23T20:17:24.814+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 595294500734350972
+2020-06-23T20:17:24.825+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 3160822314981983487
+2020-06-23T20:17:24.825+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: BDC8x, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8x, tag: 3160822314981983487
+2020-06-23T20:17:24.825+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 3160822314981983487
+2020-06-23T20:17:24.829+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 4512395233935679969
+2020-06-23T20:17:24.833+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 4, append value: xWXS2, current value: OEXtm9Ighl7jIdNRRaTgGo4I6AZTIsugviprC1mPHkRihMo54clV1zqvxHVLR1tXNTv4kHmv0_wtyqgPE4zDvqD5EQ7yGZTZ2m6nxWXS2, tag: 4512395233935679969
+2020-06-23T20:17:24.835+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 4512395233935679969
+2020-06-23T20:17:24.850+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 2033616240544886958
+2020-06-23T20:17:24.851+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 0, append value: D1r9S, current value: 44xwqCF2xXBCwzxeXtKNp6gaeNrGhxM6uyIqafg552TVqs8YfL9uJ7AiTOGlA4a0LPHslzSZVErk6APSIPHasFIssq29r6PACyyfD1r9S, tag: 2033616240544886958
+2020-06-23T20:17:24.851+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 2033616240544886958
+2020-06-23T20:17:24.860+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 2512434492281948120
+2020-06-23T20:17:24.860+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: gxADX, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8xgxADX, tag: 2512434492281948120
+2020-06-23T20:17:24.860+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 2512434492281948120
+2020-06-23T20:17:24.869+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 816412387511930102
+2020-06-23T20:17:24.870+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 4, append value: YYZj7, current value: OEXtm9Ighl7jIdNRRaTgGo4I6AZTIsugviprC1mPHkRihMo54clV1zqvxHVLR1tXNTv4kHmv0_wtyqgPE4zDvqD5EQ7yGZTZ2m6nxWXS2YYZj7, tag: 816412387511930102
+2020-06-23T20:17:24.870+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 816412387511930102
+2020-06-23T20:17:24.890+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 4542636912290285582
+2020-06-23T20:17:24.894+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 0, append value: YuorC, current value: 44xwqCF2xXBCwzxeXtKNp6gaeNrGhxM6uyIqafg552TVqs8YfL9uJ7AiTOGlA4a0LPHslzSZVErk6APSIPHasFIssq29r6PACyyfD1r9SYuorC, tag: 4542636912290285582
+2020-06-23T20:17:24.896+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 4542636912290285582
+2020-06-23T20:17:24.898+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 594131270622627920
+2020-06-23T20:17:24.901+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: WDUr-, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8xgxADXWDUr-, tag: 594131270622627920
+2020-06-23T20:17:24.901+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 594131270622627920
+2020-06-23T20:17:24.905+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 1425981909547797389
+2020-06-23T20:17:24.906+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 4, append value: b-5e_, current value: OEXtm9Ighl7jIdNRRaTgGo4I6AZTIsugviprC1mPHkRihMo54clV1zqvxHVLR1tXNTv4kHmv0_wtyqgPE4zDvqD5EQ7yGZTZ2m6nxWXS2YYZj7b-5e_, tag: 1425981909547797389
+2020-06-23T20:17:24.906+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 1425981909547797389
+2020-06-23T20:17:24.927+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 3394164759245251045
+2020-06-23T20:17:24.931+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 0, append value: kHfEx, current value: 44xwqCF2xXBCwzxeXtKNp6gaeNrGhxM6uyIqafg552TVqs8YfL9uJ7AiTOGlA4a0LPHslzSZVErk6APSIPHasFIssq29r6PACyyfD1r9SYuorCkHfEx, tag: 3394164759245251045
+2020-06-23T20:17:24.931+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 3394164759245251045
+2020-06-23T20:17:24.931+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 1606507428883908614
+2020-06-23T20:17:24.933+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: G0o2v, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8xgxADXWDUr-G0o2v, tag: 1606507428883908614
+2020-06-23T20:17:24.934+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 1606507428883908614
+2020-06-23T20:17:24.951+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 1655661855984450691
+2020-06-23T20:17:24.951+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 4, append value: iBPVQ, current value: OEXtm9Ighl7jIdNRRaTgGo4I6AZTIsugviprC1mPHkRihMo54clV1zqvxHVLR1tXNTv4kHmv0_wtyqgPE4zDvqD5EQ7yGZTZ2m6nxWXS2YYZj7b-5e_iBPVQ, tag: 1655661855984450691
+2020-06-23T20:17:24.953+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 1655661855984450691
+2020-06-23T20:17:24.957+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 1788211271262257318
+2020-06-23T20:17:24.958+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 0, append value: Cx_eQ, current value: 44xwqCF2xXBCwzxeXtKNp6gaeNrGhxM6uyIqafg552TVqs8YfL9uJ7AiTOGlA4a0LPHslzSZVErk6APSIPHasFIssq29r6PACyyfD1r9SYuorCkHfExCx_eQ, tag: 1788211271262257318
+2020-06-23T20:17:24.958+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 1788211271262257318
+2020-06-23T20:17:24.958+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 3408251271089984712
+2020-06-23T20:17:24.959+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: TI7a9, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8xgxADXWDUr-G0o2vTI7a9, tag: 3408251271089984712
+2020-06-23T20:17:24.959+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 3408251271089984712
+2020-06-23T20:17:24.964+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 703783224668184558
+2020-06-23T20:17:24.964+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 4, append value: 1DfPZ, current value: OEXtm9Ighl7jIdNRRaTgGo4I6AZTIsugviprC1mPHkRihMo54clV1zqvxHVLR1tXNTv4kHmv0_wtyqgPE4zDvqD5EQ7yGZTZ2m6nxWXS2YYZj7b-5e_iBPVQ1DfPZ, tag: 703783224668184558
+2020-06-23T20:17:24.964+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 703783224668184558
+2020-06-23T20:17:24.974+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 904523806493273147
+2020-06-23T20:17:24.975+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: AH4eX, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8xgxADXWDUr-G0o2vTI7a9AH4eX, tag: 904523806493273147
+2020-06-23T20:17:24.975+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 904523806493273147
+2020-06-23T20:17:24.976+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 1016039147988535958
+2020-06-23T20:17:24.977+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 0, append value: UgELv, current value: 44xwqCF2xXBCwzxeXtKNp6gaeNrGhxM6uyIqafg552TVqs8YfL9uJ7AiTOGlA4a0LPHslzSZVErk6APSIPHasFIssq29r6PACyyfD1r9SYuorCkHfExCx_eQUgELv, tag: 1016039147988535958
+2020-06-23T20:17:24.977+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 1016039147988535958
+2020-06-23T20:17:24.987+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 4372413401537956658
+2020-06-23T20:17:24.988+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 4, append value: WJMHh, current value: OEXtm9Ighl7jIdNRRaTgGo4I6AZTIsugviprC1mPHkRihMo54clV1zqvxHVLR1tXNTv4kHmv0_wtyqgPE4zDvqD5EQ7yGZTZ2m6nxWXS2YYZj7b-5e_iBPVQ1DfPZWJMHh, tag: 4372413401537956658
+2020-06-23T20:17:24.988+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 4372413401537956658
+2020-06-23T20:17:25.000+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 851838008838587135
+2020-06-23T20:17:25.001+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: eJo5q, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8xgxADXWDUr-G0o2vTI7a9AH4eXeJo5q, tag: 851838008838587135
+2020-06-23T20:17:25.001+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 851838008838587135
+2020-06-23T20:17:25.008+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 3482683186521667324
+2020-06-23T20:17:25.009+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 0, append value: zd2VG, current value: 44xwqCF2xXBCwzxeXtKNp6gaeNrGhxM6uyIqafg552TVqs8YfL9uJ7AiTOGlA4a0LPHslzSZVErk6APSIPHasFIssq29r6PACyyfD1r9SYuorCkHfExCx_eQUgELvzd2VG, tag: 3482683186521667324
+2020-06-23T20:17:25.009+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 3482683186521667324
+2020-06-23T20:17:25.011+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 1865657190750290503
+2020-06-23T20:17:25.011+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 4, append value: cBxld, current value: OEXtm9Ighl7jIdNRRaTgGo4I6AZTIsugviprC1mPHkRihMo54clV1zqvxHVLR1tXNTv4kHmv0_wtyqgPE4zDvqD5EQ7yGZTZ2m6nxWXS2YYZj7b-5e_iBPVQ1DfPZWJMHhcBxld, tag: 1865657190750290503
+2020-06-23T20:17:25.011+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 1865657190750290503
+2020-06-23T20:17:25.022+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 121318799994128992
+2020-06-23T20:17:25.022+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: RtV5X, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8xgxADXWDUr-G0o2vTI7a9AH4eXeJo5qRtV5X, tag: 121318799994128992
+2020-06-23T20:17:25.022+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 121318799994128992
+2020-06-23T20:17:25.030+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 66850951486851327
+2020-06-23T20:17:25.030+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 0, append value: 4QrrV, current value: 44xwqCF2xXBCwzxeXtKNp6gaeNrGhxM6uyIqafg552TVqs8YfL9uJ7AiTOGlA4a0LPHslzSZVErk6APSIPHasFIssq29r6PACyyfD1r9SYuorCkHfExCx_eQUgELvzd2VG4QrrV, tag: 66850951486851327
+2020-06-23T20:17:25.030+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 66850951486851327
+2020-06-23T20:17:25.033+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 4167383107805596031
+2020-06-23T20:17:25.034+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 4, append value: u_U2j, current value: OEXtm9Ighl7jIdNRRaTgGo4I6AZTIsugviprC1mPHkRihMo54clV1zqvxHVLR1tXNTv4kHmv0_wtyqgPE4zDvqD5EQ7yGZTZ2m6nxWXS2YYZj7b-5e_iBPVQ1DfPZWJMHhcBxldu_U2j, tag: 4167383107805596031
+2020-06-23T20:17:25.034+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 4167383107805596031
+2020-06-23T20:17:25.041+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 366682289710952281
+2020-06-23T20:17:25.043+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: NakCB, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8xgxADXWDUr-G0o2vTI7a9AH4eXeJo5qRtV5XNakCB, tag: 366682289710952281
+2020-06-23T20:17:25.043+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 366682289710952281
+2020-06-23T20:17:25.055+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 411766109272449595
+2020-06-23T20:17:25.055+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 0, append value: 5eD0T, current value: 44xwqCF2xXBCwzxeXtKNp6gaeNrGhxM6uyIqafg552TVqs8YfL9uJ7AiTOGlA4a0LPHslzSZVErk6APSIPHasFIssq29r6PACyyfD1r9SYuorCkHfExCx_eQUgELvzd2VG4QrrV5eD0T, tag: 411766109272449595
+2020-06-23T20:17:25.056+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 411766109272449595
+2020-06-23T20:17:25.060+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 2828623165558441644
+2020-06-23T20:17:25.060+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 4, append value: jRyoG, current value: OEXtm9Ighl7jIdNRRaTgGo4I6AZTIsugviprC1mPHkRihMo54clV1zqvxHVLR1tXNTv4kHmv0_wtyqgPE4zDvqD5EQ7yGZTZ2m6nxWXS2YYZj7b-5e_iBPVQ1DfPZWJMHhcBxldu_U2jjRyoG, tag: 2828623165558441644
+2020-06-23T20:17:25.060+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 2828623165558441644
+2020-06-23T20:17:25.065+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Config, tag: 1964932598960959002
+2020-06-23T20:17:25.065+0800	INFO	lablog/lablog.go:45	ShardKV.applyConfig, cfg num: 5, own shards: [5], migrate shards: [2 8], tag: 1964932598960959002
+2020-06-23T20:17:25.065+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Config, tag: 1964932598960959002
+2020-06-23T20:17:25.065+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 2267675308905666149
+2020-06-23T20:17:25.065+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: psCM8, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8xgxADXWDUr-G0o2vTI7a9AH4eXeJo5qRtV5XNakCBpsCM8, tag: 2267675308905666149
+2020-06-23T20:17:25.065+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 2267675308905666149
+2020-06-23T20:17:25.075+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: MigrateTrigger, tag: 723667881237755261
+2020-06-23T20:17:25.075+0800	INFO	lablog/lablog.go:45	ShardKV.applyMigrateTrigger, cfg num: 5, shard: 8, tag: 723667881237755261, shard tag: 3232360010185368357
+2020-06-23T20:17:25.075+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: MigrateTrigger, tag: 723667881237755261
+2020-06-23T20:17:25.081+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 583350416943247953
+2020-06-23T20:17:25.081+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: HvFV1, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8xgxADXWDUr-G0o2vTI7a9AH4eXeJo5qRtV5XNakCBpsCM8HvFV1, tag: 583350416943247953
+2020-06-23T20:17:25.081+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 583350416943247953
+2020-06-23T20:17:25.087+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: MigrateTrigger, tag: 151175958728733641
+2020-06-23T20:17:25.087+0800	INFO	lablog/lablog.go:45	ShardKV.applyMigrateTrigger, cfg num: 5, shard: 2, tag: 151175958728733641, shard tag: 1921883807865507275
+2020-06-23T20:17:25.087+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: MigrateTrigger, tag: 151175958728733641
+2020-06-23T20:17:25.096+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 2193494144239170748
+2020-06-23T20:17:25.096+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: OPvMB, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8xgxADXWDUr-G0o2vTI7a9AH4eXeJo5qRtV5XNakCBpsCM8HvFV1OPvMB, tag: 2193494144239170748
+2020-06-23T20:17:25.096+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 2193494144239170748
+2020-06-23T20:17:25.111+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 1538141579517656541
+2020-06-23T20:17:25.111+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: aej2D, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8xgxADXWDUr-G0o2vTI7a9AH4eXeJo5qRtV5XNakCBpsCM8HvFV1OPvMBaej2D, tag: 1538141579517656541
+2020-06-23T20:17:25.111+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 1538141579517656541
+2020-06-23T20:17:25.127+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 2837362600005057595
+2020-06-23T20:17:25.127+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: W3ZpV, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8xgxADXWDUr-G0o2vTI7a9AH4eXeJo5qRtV5XNakCBpsCM8HvFV1OPvMBaej2DW3ZpV, tag: 2837362600005057595
+2020-06-23T20:17:25.127+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 2837362600005057595
+2020-06-23T20:17:25.136+0800	INFO	lablog/lablog.go:45	ShardKV.request start, op: Append, tag: 3907369035769602792
+2020-06-23T20:17:25.136+0800	INFO	lablog/lablog.go:45	ShardKV.request wrong leader, op: Append, tag: 3907369035769602792
+2020-06-23T20:17:25.136+0800	INFO	lablog/lablog.go:45	ShardKV.request end, op: Append, tag: 3907369035769602792
+2020-06-23T20:17:25.136+0800	INFO	lablog/lablog.go:45	ShardKV.PutAppend, key: 5, val: jH4IH, result: {true  }, tag: 3907369035769602792
+2020-06-23T20:17:25.143+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 2608652658428118519
+2020-06-23T20:17:25.143+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: gz80c, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8xgxADXWDUr-G0o2vTI7a9AH4eXeJo5qRtV5XNakCBpsCM8HvFV1OPvMBaej2DW3ZpVgz80c, tag: 2608652658428118519
+2020-06-23T20:17:25.143+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 2608652658428118519
+2020-06-23T20:17:25.143+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 3907369035769602792
+2020-06-23T20:17:25.143+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 3907369035769602792
+2020-06-23T20:17:25.157+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 3232203924177152124
+2020-06-23T20:17:25.158+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: 95120, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8xgxADXWDUr-G0o2vTI7a9AH4eXeJo5qRtV5XNakCBpsCM8HvFV1OPvMBaej2DW3ZpVgz80c95120, tag: 3232203924177152124
+2020-06-23T20:17:25.158+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 3232203924177152124
+2020-06-23T20:17:25.175+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 2049039460547735529
+2020-06-23T20:17:25.175+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: 8NmIj, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8xgxADXWDUr-G0o2vTI7a9AH4eXeJo5qRtV5XNakCBpsCM8HvFV1OPvMBaej2DW3ZpVgz80c951208NmIj, tag: 2049039460547735529
+2020-06-23T20:17:25.175+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 2049039460547735529
+2020-06-23T20:17:25.189+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 2786170707508133210
+2020-06-23T20:17:25.189+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: 3LCq5, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8xgxADXWDUr-G0o2vTI7a9AH4eXeJo5qRtV5XNakCBpsCM8HvFV1OPvMBaej2DW3ZpVgz80c951208NmIj3LCq5, tag: 2786170707508133210
+2020-06-23T20:17:25.189+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 2786170707508133210
+2020-06-23T20:17:25.206+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 1998828312712062243
+2020-06-23T20:17:25.206+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: Oz7e2, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8xgxADXWDUr-G0o2vTI7a9AH4eXeJo5qRtV5XNakCBpsCM8HvFV1OPvMBaej2DW3ZpVgz80c951208NmIj3LCq5Oz7e2, tag: 1998828312712062243
+2020-06-23T20:17:25.206+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 1998828312712062243
+2020-06-23T20:17:25.215+0800	INFO	lablog/lablog.go:45	ShardKV.request start, op: Append, tag: 999458911171681653
+2020-06-23T20:17:25.215+0800	INFO	lablog/lablog.go:45	ShardKV.request wrong leader, op: Append, tag: 999458911171681653
+2020-06-23T20:17:25.215+0800	INFO	lablog/lablog.go:45	ShardKV.request end, op: Append, tag: 999458911171681653
+2020-06-23T20:17:25.215+0800	INFO	lablog/lablog.go:45	ShardKV.PutAppend, key: 1, val: cyWE8, result: {true  }, tag: 999458911171681653
+2020-06-23T20:17:25.222+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 2600287665825008347
+2020-06-23T20:17:25.222+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: NzhN_, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8xgxADXWDUr-G0o2vTI7a9AH4eXeJo5qRtV5XNakCBpsCM8HvFV1OPvMBaej2DW3ZpVgz80c951208NmIj3LCq5Oz7e2NzhN_, tag: 2600287665825008347
+2020-06-23T20:17:25.222+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 2600287665825008347
+2020-06-23T20:17:25.222+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 999458911171681653
+2020-06-23T20:17:25.222+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 999458911171681653
+2020-06-23T20:17:25.237+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 4280920587464860825
+2020-06-23T20:17:25.237+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: GJ-p3, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8xgxADXWDUr-G0o2vTI7a9AH4eXeJo5qRtV5XNakCBpsCM8HvFV1OPvMBaej2DW3ZpVgz80c951208NmIj3LCq5Oz7e2NzhN_GJ-p3, tag: 4280920587464860825
+2020-06-23T20:17:25.238+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 4280920587464860825
+2020-06-23T20:17:25.250+0800	INFO	lablog/lablog.go:45	ShardKV.request start, op: Append, tag: 3907369035769602792
+2020-06-23T20:17:25.250+0800	INFO	lablog/lablog.go:45	ShardKV.request wrong leader, op: Append, tag: 3907369035769602792
+2020-06-23T20:17:25.250+0800	INFO	lablog/lablog.go:45	ShardKV.request end, op: Append, tag: 3907369035769602792
+2020-06-23T20:17:25.250+0800	INFO	lablog/lablog.go:45	ShardKV.PutAppend, key: 5, val: jH4IH, result: {true  }, tag: 3907369035769602792
+2020-06-23T20:17:25.258+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 580507081732734292
+2020-06-23T20:17:25.258+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: xcK8N, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8xgxADXWDUr-G0o2vTI7a9AH4eXeJo5qRtV5XNakCBpsCM8HvFV1OPvMBaej2DW3ZpVgz80c951208NmIj3LCq5Oz7e2NzhN_GJ-p3xcK8N, tag: 580507081732734292
+2020-06-23T20:17:25.258+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 580507081732734292
+2020-06-23T20:17:25.258+0800	INFO	lablog/lablog.go:45	ShardKV.request start, op: Append, tag: 789920782733736377
+2020-06-23T20:17:25.258+0800	INFO	lablog/lablog.go:45	ShardKV.request wrong leader, op: Append, tag: 789920782733736377
+2020-06-23T20:17:25.258+0800	INFO	lablog/lablog.go:45	ShardKV.request end, op: Append, tag: 789920782733736377
+2020-06-23T20:17:25.258+0800	INFO	lablog/lablog.go:45	ShardKV.PutAppend, key: 3, val: 7vUrc, result: {true  }, tag: 789920782733736377
+2020-06-23T20:17:25.266+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 3907369035769602792
+2020-06-23T20:17:25.266+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 3907369035769602792
+2020-06-23T20:17:25.266+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 789920782733736377
+2020-06-23T20:17:25.267+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 789920782733736377
+2020-06-23T20:17:25.272+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 2820386182268788912
+2020-06-23T20:17:25.273+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: HmJaG, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8xgxADXWDUr-G0o2vTI7a9AH4eXeJo5qRtV5XNakCBpsCM8HvFV1OPvMBaej2DW3ZpVgz80c951208NmIj3LCq5Oz7e2NzhN_GJ-p3xcK8NHmJaG, tag: 2820386182268788912
+2020-06-23T20:17:25.273+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 2820386182268788912
+2020-06-23T20:17:25.287+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 6601359607655987
+2020-06-23T20:17:25.287+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: fIdWY, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8xgxADXWDUr-G0o2vTI7a9AH4eXeJo5qRtV5XNakCBpsCM8HvFV1OPvMBaej2DW3ZpVgz80c951208NmIj3LCq5Oz7e2NzhN_GJ-p3xcK8NHmJaGfIdWY, tag: 6601359607655987
+2020-06-23T20:17:25.287+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 6601359607655987
+2020-06-23T20:17:25.290+0800	INFO	lablog/lablog.go:45	ShardKV.Kill
+2020-06-23T20:17:25.524+0800	INFO	lablog/lablog.go:45	StartServer
+2020-06-23T20:17:25.748+0800	INFO	lablog/lablog.go:45	ShardKV.syncConfig, cfg num: 0, req cfg num: 2, ret cfg num: 2, tag: 683871591761875325
+2020-06-23T20:17:25.751+0800	INFO	lablog/lablog.go:45	ShardKV.request start, op: Config, tag: 683871591761875325
+2020-06-23T20:17:25.753+0800	INFO	lablog/lablog.go:45	ShardKV.request before start raft, op: Config, tag: 683871591761875325
+2020-06-23T20:17:25.756+0800	INFO	lablog/lablog.go:45	ShardKV.request after start raft, op: Config, tag: 683871591761875325
+2020-06-23T20:17:25.757+0800	INFO	lablog/lablog.go:45	ShardKV.request end, op: Config, tag: 683871591761875325
+2020-06-23T20:17:25.763+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Config, tag: 150933272585528427
+2020-06-23T20:17:25.765+0800	INFO	lablog/lablog.go:45	ShardKV.applyConfig, cfg num: 2, initial own shards: [], tag: 150933272585528427
+2020-06-23T20:17:25.766+0800	INFO	lablog/lablog.go:45	ShardKV.applyConfig, cfg num: 2, own shards: [], migrate shards: [], tag: 150933272585528427
+2020-06-23T20:17:25.769+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Config, tag: 150933272585528427
+2020-06-23T20:17:25.771+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Config, tag: 1761264379023314690
+2020-06-23T20:17:25.773+0800	INFO	lablog/lablog.go:45	ShardKV.applyConfig, cfg num: 3, own shards: [], migrate shards: [], tag: 1761264379023314690
+2020-06-23T20:17:25.774+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Config, tag: 1761264379023314690
+2020-06-23T20:17:25.776+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Config, tag: 2869906933956875654
+2020-06-23T20:17:25.778+0800	INFO	lablog/lablog.go:45	ShardKV.applyConfig, cfg num: 4, own shards: [], migrate shards: [], tag: 2869906933956875654
+2020-06-23T20:17:25.778+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Config, tag: 2869906933956875654
+2020-06-23T20:17:25.779+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: MigrateReceive, tag: 1603944349176037553
+2020-06-23T20:17:25.780+0800	INFO	lablog/lablog.go:45	ShardKV.applyMigrateReceive, cfg num: 4, shard: 2, tag: 1603944349176037553, owned shards: [2]
+2020-06-23T20:17:25.784+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: MigrateReceive, tag: 1603944349176037553
+2020-06-23T20:17:25.785+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: MigrateReceive, tag: 4494711752116226424
+2020-06-23T20:17:25.793+0800	INFO	lablog/lablog.go:45	ShardKV.applyMigrateReceive, cfg num: 4, shard: 5, tag: 4494711752116226424, owned shards: [2 5]
+2020-06-23T20:17:25.797+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: MigrateReceive, tag: 4494711752116226424
+2020-06-23T20:17:25.800+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: MigrateReceive, tag: 702522789280381717
+2020-06-23T20:17:25.801+0800	INFO	lablog/lablog.go:45	ShardKV.applyMigrateReceive, cfg num: 4, shard: 8, tag: 702522789280381717, owned shards: [2 5 8]
+2020-06-23T20:17:25.805+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: MigrateReceive, tag: 702522789280381717
+2020-06-23T20:17:25.807+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 1026388534088341148
+2020-06-23T20:17:25.808+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: iJoih, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih, tag: 1026388534088341148
+2020-06-23T20:17:25.809+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 1026388534088341148
+2020-06-23T20:17:25.810+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 2271945190681964969
+2020-06-23T20:17:25.813+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 4, append value: qD5EQ, current value: OEXtm9Ighl7jIdNRRaTgGo4I6AZTIsugviprC1mPHkRihMo54clV1zqvxHVLR1tXNTv4kHmv0_wtyqgPE4zDvqD5EQ, tag: 2271945190681964969
+2020-06-23T20:17:25.814+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 2271945190681964969
+2020-06-23T20:17:25.816+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 4322392364831911173
+2020-06-23T20:17:25.817+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 0, append value: FIssq, current value: 44xwqCF2xXBCwzxeXtKNp6gaeNrGhxM6uyIqafg552TVqs8YfL9uJ7AiTOGlA4a0LPHslzSZVErk6APSIPHasFIssq, tag: 4322392364831911173
+2020-06-23T20:17:25.822+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 4322392364831911173
+2020-06-23T20:17:25.823+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 4176675144014058590
+2020-06-23T20:17:25.824+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: 4_KUM, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUM, tag: 4176675144014058590
+2020-06-23T20:17:25.826+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 4176675144014058590
+2020-06-23T20:17:25.827+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 960149826298096369
+2020-06-23T20:17:25.828+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 4, append value: 7yGZT, current value: OEXtm9Ighl7jIdNRRaTgGo4I6AZTIsugviprC1mPHkRihMo54clV1zqvxHVLR1tXNTv4kHmv0_wtyqgPE4zDvqD5EQ7yGZT, tag: 960149826298096369
+2020-06-23T20:17:25.830+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 960149826298096369
+2020-06-23T20:17:25.832+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 560762785037855119
+2020-06-23T20:17:25.833+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 0, append value: 29r6P, current value: 44xwqCF2xXBCwzxeXtKNp6gaeNrGhxM6uyIqafg552TVqs8YfL9uJ7AiTOGlA4a0LPHslzSZVErk6APSIPHasFIssq29r6P, tag: 560762785037855119
+2020-06-23T20:17:25.836+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 560762785037855119
+2020-06-23T20:17:25.838+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 2927288229293378737
+2020-06-23T20:17:25.841+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: pdqQB, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQB, tag: 2927288229293378737
+2020-06-23T20:17:25.842+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 2927288229293378737
+2020-06-23T20:17:25.846+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 364933104610907343
+2020-06-23T20:17:25.846+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 4, append value: Z2m6n, current value: OEXtm9Ighl7jIdNRRaTgGo4I6AZTIsugviprC1mPHkRihMo54clV1zqvxHVLR1tXNTv4kHmv0_wtyqgPE4zDvqD5EQ7yGZTZ2m6n, tag: 364933104610907343
+2020-06-23T20:17:25.847+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 364933104610907343
+2020-06-23T20:17:25.847+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 595294500734350972
+2020-06-23T20:17:25.849+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 0, append value: ACyyf, current value: 44xwqCF2xXBCwzxeXtKNp6gaeNrGhxM6uyIqafg552TVqs8YfL9uJ7AiTOGlA4a0LPHslzSZVErk6APSIPHasFIssq29r6PACyyf, tag: 595294500734350972
+2020-06-23T20:17:25.850+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 595294500734350972
+2020-06-23T20:17:25.861+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 3160822314981983487
+2020-06-23T20:17:25.862+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: BDC8x, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8x, tag: 3160822314981983487
+2020-06-23T20:17:25.864+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 3160822314981983487
+2020-06-23T20:17:25.866+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 4512395233935679969
+2020-06-23T20:17:25.867+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 4, append value: xWXS2, current value: OEXtm9Ighl7jIdNRRaTgGo4I6AZTIsugviprC1mPHkRihMo54clV1zqvxHVLR1tXNTv4kHmv0_wtyqgPE4zDvqD5EQ7yGZTZ2m6nxWXS2, tag: 4512395233935679969
+2020-06-23T20:17:25.867+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 4512395233935679969
+2020-06-23T20:17:25.867+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 2033616240544886958
+2020-06-23T20:17:25.868+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 0, append value: D1r9S, current value: 44xwqCF2xXBCwzxeXtKNp6gaeNrGhxM6uyIqafg552TVqs8YfL9uJ7AiTOGlA4a0LPHslzSZVErk6APSIPHasFIssq29r6PACyyfD1r9S, tag: 2033616240544886958
+2020-06-23T20:17:25.869+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 2033616240544886958
+2020-06-23T20:17:25.875+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 2512434492281948120
+2020-06-23T20:17:25.875+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: gxADX, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8xgxADX, tag: 2512434492281948120
+2020-06-23T20:17:25.876+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 2512434492281948120
+2020-06-23T20:17:25.876+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 816412387511930102
+2020-06-23T20:17:25.877+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 4, append value: YYZj7, current value: OEXtm9Ighl7jIdNRRaTgGo4I6AZTIsugviprC1mPHkRihMo54clV1zqvxHVLR1tXNTv4kHmv0_wtyqgPE4zDvqD5EQ7yGZTZ2m6nxWXS2YYZj7, tag: 816412387511930102
+2020-06-23T20:17:25.878+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 816412387511930102
+2020-06-23T20:17:25.879+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 4542636912290285582
+2020-06-23T20:17:25.879+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 0, append value: YuorC, current value: 44xwqCF2xXBCwzxeXtKNp6gaeNrGhxM6uyIqafg552TVqs8YfL9uJ7AiTOGlA4a0LPHslzSZVErk6APSIPHasFIssq29r6PACyyfD1r9SYuorC, tag: 4542636912290285582
+2020-06-23T20:17:25.880+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 4542636912290285582
+2020-06-23T20:17:25.881+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 594131270622627920
+2020-06-23T20:17:25.882+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: WDUr-, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8xgxADXWDUr-, tag: 594131270622627920
+2020-06-23T20:17:25.882+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 594131270622627920
+2020-06-23T20:17:25.882+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 1425981909547797389
+2020-06-23T20:17:25.883+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 4, append value: b-5e_, current value: OEXtm9Ighl7jIdNRRaTgGo4I6AZTIsugviprC1mPHkRihMo54clV1zqvxHVLR1tXNTv4kHmv0_wtyqgPE4zDvqD5EQ7yGZTZ2m6nxWXS2YYZj7b-5e_, tag: 1425981909547797389
+2020-06-23T20:17:25.884+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 1425981909547797389
+2020-06-23T20:17:25.884+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 3394164759245251045
+2020-06-23T20:17:25.888+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 0, append value: kHfEx, current value: 44xwqCF2xXBCwzxeXtKNp6gaeNrGhxM6uyIqafg552TVqs8YfL9uJ7AiTOGlA4a0LPHslzSZVErk6APSIPHasFIssq29r6PACyyfD1r9SYuorCkHfEx, tag: 3394164759245251045
+2020-06-23T20:17:25.889+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 3394164759245251045
+2020-06-23T20:17:25.890+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 1606507428883908614
+2020-06-23T20:17:25.892+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: G0o2v, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8xgxADXWDUr-G0o2v, tag: 1606507428883908614
+2020-06-23T20:17:25.893+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 1606507428883908614
+2020-06-23T20:17:25.893+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 1655661855984450691
+2020-06-23T20:17:25.895+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 4, append value: iBPVQ, current value: OEXtm9Ighl7jIdNRRaTgGo4I6AZTIsugviprC1mPHkRihMo54clV1zqvxHVLR1tXNTv4kHmv0_wtyqgPE4zDvqD5EQ7yGZTZ2m6nxWXS2YYZj7b-5e_iBPVQ, tag: 1655661855984450691
+2020-06-23T20:17:25.895+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 1655661855984450691
+2020-06-23T20:17:25.897+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 1788211271262257318
+2020-06-23T20:17:25.901+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 0, append value: Cx_eQ, current value: 44xwqCF2xXBCwzxeXtKNp6gaeNrGhxM6uyIqafg552TVqs8YfL9uJ7AiTOGlA4a0LPHslzSZVErk6APSIPHasFIssq29r6PACyyfD1r9SYuorCkHfExCx_eQ, tag: 1788211271262257318
+2020-06-23T20:17:25.903+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 1788211271262257318
+2020-06-23T20:17:25.904+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 3408251271089984712
+2020-06-23T20:17:25.905+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: TI7a9, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8xgxADXWDUr-G0o2vTI7a9, tag: 3408251271089984712
+2020-06-23T20:17:25.905+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 3408251271089984712
+2020-06-23T20:17:25.907+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 703783224668184558
+2020-06-23T20:17:25.908+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 4, append value: 1DfPZ, current value: OEXtm9Ighl7jIdNRRaTgGo4I6AZTIsugviprC1mPHkRihMo54clV1zqvxHVLR1tXNTv4kHmv0_wtyqgPE4zDvqD5EQ7yGZTZ2m6nxWXS2YYZj7b-5e_iBPVQ1DfPZ, tag: 703783224668184558
+2020-06-23T20:17:25.910+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 703783224668184558
+2020-06-23T20:17:25.911+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 904523806493273147
+2020-06-23T20:17:25.911+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: AH4eX, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8xgxADXWDUr-G0o2vTI7a9AH4eX, tag: 904523806493273147
+2020-06-23T20:17:25.912+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 904523806493273147
+2020-06-23T20:17:25.913+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 1016039147988535958
+2020-06-23T20:17:25.913+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 0, append value: UgELv, current value: 44xwqCF2xXBCwzxeXtKNp6gaeNrGhxM6uyIqafg552TVqs8YfL9uJ7AiTOGlA4a0LPHslzSZVErk6APSIPHasFIssq29r6PACyyfD1r9SYuorCkHfExCx_eQUgELv, tag: 1016039147988535958
+2020-06-23T20:17:25.914+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 1016039147988535958
+2020-06-23T20:17:25.914+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 4372413401537956658
+2020-06-23T20:17:25.916+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 4, append value: WJMHh, current value: OEXtm9Ighl7jIdNRRaTgGo4I6AZTIsugviprC1mPHkRihMo54clV1zqvxHVLR1tXNTv4kHmv0_wtyqgPE4zDvqD5EQ7yGZTZ2m6nxWXS2YYZj7b-5e_iBPVQ1DfPZWJMHh, tag: 4372413401537956658
+2020-06-23T20:17:25.916+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 4372413401537956658
+2020-06-23T20:17:25.916+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 851838008838587135
+2020-06-23T20:17:25.917+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: eJo5q, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8xgxADXWDUr-G0o2vTI7a9AH4eXeJo5q, tag: 851838008838587135
+2020-06-23T20:17:25.919+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 851838008838587135
+2020-06-23T20:17:25.920+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 3482683186521667324
+2020-06-23T20:17:25.920+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 0, append value: zd2VG, current value: 44xwqCF2xXBCwzxeXtKNp6gaeNrGhxM6uyIqafg552TVqs8YfL9uJ7AiTOGlA4a0LPHslzSZVErk6APSIPHasFIssq29r6PACyyfD1r9SYuorCkHfExCx_eQUgELvzd2VG, tag: 3482683186521667324
+2020-06-23T20:17:25.922+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 3482683186521667324
+2020-06-23T20:17:25.922+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 1865657190750290503
+2020-06-23T20:17:25.924+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 4, append value: cBxld, current value: OEXtm9Ighl7jIdNRRaTgGo4I6AZTIsugviprC1mPHkRihMo54clV1zqvxHVLR1tXNTv4kHmv0_wtyqgPE4zDvqD5EQ7yGZTZ2m6nxWXS2YYZj7b-5e_iBPVQ1DfPZWJMHhcBxld, tag: 1865657190750290503
+2020-06-23T20:17:25.924+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 1865657190750290503
+2020-06-23T20:17:25.924+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 121318799994128992
+2020-06-23T20:17:25.926+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: RtV5X, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8xgxADXWDUr-G0o2vTI7a9AH4eXeJo5qRtV5X, tag: 121318799994128992
+2020-06-23T20:17:25.927+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 121318799994128992
+2020-06-23T20:17:25.927+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 66850951486851327
+2020-06-23T20:17:25.928+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 0, append value: 4QrrV, current value: 44xwqCF2xXBCwzxeXtKNp6gaeNrGhxM6uyIqafg552TVqs8YfL9uJ7AiTOGlA4a0LPHslzSZVErk6APSIPHasFIssq29r6PACyyfD1r9SYuorCkHfExCx_eQUgELvzd2VG4QrrV, tag: 66850951486851327
+2020-06-23T20:17:25.930+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 66850951486851327
+2020-06-23T20:17:25.931+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 4167383107805596031
+2020-06-23T20:17:25.931+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 4, append value: u_U2j, current value: OEXtm9Ighl7jIdNRRaTgGo4I6AZTIsugviprC1mPHkRihMo54clV1zqvxHVLR1tXNTv4kHmv0_wtyqgPE4zDvqD5EQ7yGZTZ2m6nxWXS2YYZj7b-5e_iBPVQ1DfPZWJMHhcBxldu_U2j, tag: 4167383107805596031
+2020-06-23T20:17:25.932+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 4167383107805596031
+2020-06-23T20:17:25.932+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 366682289710952281
+2020-06-23T20:17:25.933+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: NakCB, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8xgxADXWDUr-G0o2vTI7a9AH4eXeJo5qRtV5XNakCB, tag: 366682289710952281
+2020-06-23T20:17:25.934+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 366682289710952281
+2020-06-23T20:17:25.935+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 411766109272449595
+2020-06-23T20:17:25.935+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 0, append value: 5eD0T, current value: 44xwqCF2xXBCwzxeXtKNp6gaeNrGhxM6uyIqafg552TVqs8YfL9uJ7AiTOGlA4a0LPHslzSZVErk6APSIPHasFIssq29r6PACyyfD1r9SYuorCkHfExCx_eQUgELvzd2VG4QrrV5eD0T, tag: 411766109272449595
+2020-06-23T20:17:25.936+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 411766109272449595
+2020-06-23T20:17:25.937+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 2828623165558441644
+2020-06-23T20:17:25.938+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 4, append value: jRyoG, current value: OEXtm9Ighl7jIdNRRaTgGo4I6AZTIsugviprC1mPHkRihMo54clV1zqvxHVLR1tXNTv4kHmv0_wtyqgPE4zDvqD5EQ7yGZTZ2m6nxWXS2YYZj7b-5e_iBPVQ1DfPZWJMHhcBxldu_U2jjRyoG, tag: 2828623165558441644
+2020-06-23T20:17:25.940+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 2828623165558441644
+2020-06-23T20:17:25.941+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Config, tag: 1964932598960959002
+2020-06-23T20:17:25.942+0800	INFO	lablog/lablog.go:45	ShardKV.applyConfig, cfg num: 5, own shards: [5], migrate shards: [2 8], tag: 1964932598960959002
+2020-06-23T20:17:25.943+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Config, tag: 1964932598960959002
+2020-06-23T20:17:25.943+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 2267675308905666149
+2020-06-23T20:17:25.945+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: psCM8, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8xgxADXWDUr-G0o2vTI7a9AH4eXeJo5qRtV5XNakCBpsCM8, tag: 2267675308905666149
+2020-06-23T20:17:25.947+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 2267675308905666149
+2020-06-23T20:17:25.951+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: MigrateTrigger, tag: 723667881237755261
+2020-06-23T20:17:25.952+0800	INFO	lablog/lablog.go:45	ShardKV.applyMigrateTrigger, cfg num: 5, shard: 8, tag: 723667881237755261, shard tag: 3232360010185368357
+2020-06-23T20:17:25.952+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: MigrateTrigger, tag: 723667881237755261
+2020-06-23T20:17:25.953+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 583350416943247953
+2020-06-23T20:17:25.954+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: HvFV1, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8xgxADXWDUr-G0o2vTI7a9AH4eXeJo5qRtV5XNakCBpsCM8HvFV1, tag: 583350416943247953
+2020-06-23T20:17:25.955+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 583350416943247953
+2020-06-23T20:17:25.956+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: MigrateTrigger, tag: 151175958728733641
+2020-06-23T20:17:25.959+0800	INFO	lablog/lablog.go:45	ShardKV.applyMigrateTrigger, cfg num: 5, shard: 2, tag: 151175958728733641, shard tag: 1921883807865507275
+2020-06-23T20:17:25.960+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: MigrateTrigger, tag: 151175958728733641
+2020-06-23T20:17:25.962+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 2193494144239170748
+2020-06-23T20:17:25.963+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: OPvMB, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8xgxADXWDUr-G0o2vTI7a9AH4eXeJo5qRtV5XNakCBpsCM8HvFV1OPvMB, tag: 2193494144239170748
+2020-06-23T20:17:25.963+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 2193494144239170748
+2020-06-23T20:17:25.965+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 1538141579517656541
+2020-06-23T20:17:25.966+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: aej2D, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8xgxADXWDUr-G0o2vTI7a9AH4eXeJo5qRtV5XNakCBpsCM8HvFV1OPvMBaej2D, tag: 1538141579517656541
+2020-06-23T20:17:25.967+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 1538141579517656541
+2020-06-23T20:17:25.971+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 2837362600005057595
+2020-06-23T20:17:25.972+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: W3ZpV, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8xgxADXWDUr-G0o2vTI7a9AH4eXeJo5qRtV5XNakCBpsCM8HvFV1OPvMBaej2DW3ZpV, tag: 2837362600005057595
+2020-06-23T20:17:25.972+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 2837362600005057595
+2020-06-23T20:17:25.973+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 2608652658428118519
+2020-06-23T20:17:25.974+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: gz80c, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8xgxADXWDUr-G0o2vTI7a9AH4eXeJo5qRtV5XNakCBpsCM8HvFV1OPvMBaej2DW3ZpVgz80c, tag: 2608652658428118519
+2020-06-23T20:17:25.974+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 2608652658428118519
+2020-06-23T20:17:25.974+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 3907369035769602792
+2020-06-23T20:17:25.976+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 3907369035769602792
+2020-06-23T20:17:25.976+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 3232203924177152124
+2020-06-23T20:17:25.977+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: 95120, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8xgxADXWDUr-G0o2vTI7a9AH4eXeJo5qRtV5XNakCBpsCM8HvFV1OPvMBaej2DW3ZpVgz80c95120, tag: 3232203924177152124
+2020-06-23T20:17:25.979+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 3232203924177152124
+2020-06-23T20:17:25.980+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 2049039460547735529
+2020-06-23T20:17:25.980+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: 8NmIj, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8xgxADXWDUr-G0o2vTI7a9AH4eXeJo5qRtV5XNakCBpsCM8HvFV1OPvMBaej2DW3ZpVgz80c951208NmIj, tag: 2049039460547735529
+2020-06-23T20:17:25.980+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 2049039460547735529
+2020-06-23T20:17:25.985+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 2786170707508133210
+2020-06-23T20:17:25.986+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: 3LCq5, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8xgxADXWDUr-G0o2vTI7a9AH4eXeJo5qRtV5XNakCBpsCM8HvFV1OPvMBaej2DW3ZpVgz80c951208NmIj3LCq5, tag: 2786170707508133210
+2020-06-23T20:17:25.986+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 2786170707508133210
+2020-06-23T20:17:25.987+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 1998828312712062243
+2020-06-23T20:17:25.989+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: Oz7e2, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8xgxADXWDUr-G0o2vTI7a9AH4eXeJo5qRtV5XNakCBpsCM8HvFV1OPvMBaej2DW3ZpVgz80c951208NmIj3LCq5Oz7e2, tag: 1998828312712062243
+2020-06-23T20:17:25.992+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 1998828312712062243
+2020-06-23T20:17:25.992+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 2600287665825008347
+2020-06-23T20:17:25.995+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: NzhN_, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8xgxADXWDUr-G0o2vTI7a9AH4eXeJo5qRtV5XNakCBpsCM8HvFV1OPvMBaej2DW3ZpVgz80c951208NmIj3LCq5Oz7e2NzhN_, tag: 2600287665825008347
+2020-06-23T20:17:25.997+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 2600287665825008347
+2020-06-23T20:17:25.997+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 999458911171681653
+2020-06-23T20:17:25.999+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 999458911171681653
+2020-06-23T20:17:26.004+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 4280920587464860825
+2020-06-23T20:17:26.005+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: GJ-p3, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8xgxADXWDUr-G0o2vTI7a9AH4eXeJo5qRtV5XNakCBpsCM8HvFV1OPvMBaej2DW3ZpVgz80c951208NmIj3LCq5Oz7e2NzhN_GJ-p3, tag: 4280920587464860825
+2020-06-23T20:17:26.005+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 4280920587464860825
+2020-06-23T20:17:26.006+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 580507081732734292
+2020-06-23T20:17:26.008+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: xcK8N, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8xgxADXWDUr-G0o2vTI7a9AH4eXeJo5qRtV5XNakCBpsCM8HvFV1OPvMBaej2DW3ZpVgz80c951208NmIj3LCq5Oz7e2NzhN_GJ-p3xcK8N, tag: 580507081732734292
+2020-06-23T20:17:26.009+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 580507081732734292
+2020-06-23T20:17:26.010+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 3907369035769602792
+2020-06-23T20:17:26.012+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 3907369035769602792
+2020-06-23T20:17:26.015+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 789920782733736377
+2020-06-23T20:17:26.017+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 789920782733736377
+2020-06-23T20:17:26.017+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 2820386182268788912
+2020-06-23T20:17:26.019+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: HmJaG, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8xgxADXWDUr-G0o2vTI7a9AH4eXeJo5qRtV5XNakCBpsCM8HvFV1OPvMBaej2DW3ZpVgz80c951208NmIj3LCq5Oz7e2NzhN_GJ-p3xcK8NHmJaG, tag: 2820386182268788912
+2020-06-23T20:17:26.021+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 2820386182268788912
+2020-06-23T20:17:26.023+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Append, tag: 6601359607655987
+2020-06-23T20:17:26.024+0800	INFO	lablog/lablog.go:45	ShardKV.applyAppend, key: 7, append value: fIdWY, current value: ezj-SNZUw4xLXuTGRg_tErHtv5DJxFiJoih4_KUMpdqQBBDC8xgxADXWDUr-G0o2vTI7a9AH4eXeJo5qRtV5XNakCBpsCM8HvFV1OPvMBaej2DW3ZpVgz80c951208NmIj3LCq5Oz7e2NzhN_GJ-p3xcK8NHmJaGfIdWY, tag: 6601359607655987
+2020-06-23T20:17:26.025+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Append, tag: 6601359607655987
+2020-06-23T20:17:26.027+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Config, tag: 683871591761875325
+2020-06-23T20:17:26.027+0800	INFO	lablog/lablog.go:45	ShardKV.applyConfig, cfg num: 2, initial own shards: [], tag: 683871591761875325
+2020-06-23T20:17:26.029+0800	INFO	lablog/lablog.go:45	ShardKV.applyConfig, cfg num: 2, own shards: [], migrate shards: [5], tag: 683871591761875325
+2020-06-23T20:17:26.034+0800	INFO	lablog/lablog.go:45	ShardKV.apply, result: {false OK }, op: Config, tag: 683871591761875325
+2020-06-23T20:17:26.036+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Config, tag: 683871591761875325
+2020-06-23T20:17:26.157+0800	INFO	lablog/lablog.go:45	ShardKV.syncConfig, cfg num: 2, req cfg num: -1, ret cfg num: 8, tag: 4056252400005876102
+2020-06-23T20:17:26.160+0800	INFO	lablog/lablog.go:45	ShardKV.request start, op: Config, tag: 4056252400005876102
+2020-06-23T20:17:26.161+0800	INFO	lablog/lablog.go:45	ShardKV.migrateTrigger start, shard: 5, tag: 1927310952458425257
+2020-06-23T20:17:26.164+0800	INFO	lablog/lablog.go:45	ShardKV.request before start raft, op: Config, tag: 4056252400005876102
+2020-06-23T20:17:26.167+0800	INFO	lablog/lablog.go:45	ShardKV.request after start raft, op: Config, tag: 4056252400005876102
+2020-06-23T20:17:26.169+0800	INFO	lablog/lablog.go:45	ShardKV.request end, op: Config, tag: 4056252400005876102
+2020-06-23T20:17:26.170+0800	INFO	lablog/lablog.go:45	ShardKV.request start, op: MigrateTrigger, tag: 1927310952458425257
+2020-06-23T20:17:26.172+0800	INFO	lablog/lablog.go:45	ShardKV.request before start raft, op: MigrateTrigger, tag: 1927310952458425257
+2020-06-23T20:17:26.177+0800	INFO	lablog/lablog.go:45	ShardKV.migrateTrigger end, shard: 5, tag: 1927310952458425257
+2020-06-23T20:17:26.182+0800	INFO	lablog/lablog.go:45	ShardKV.migrateSend start, shard: 8
+2020-06-23T20:17:26.184+0800	INFO	lablog/lablog.go:45	ShardKV.request after start raft, op: MigrateTrigger, tag: 1927310952458425257
+2020-06-23T20:17:26.185+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Config, tag: 4056252400005876102
+2020-06-23T20:17:26.189+0800	INFO	lablog/lablog.go:45	ShardKV.request end, op: MigrateTrigger, tag: 1927310952458425257
+2020-06-23T20:17:26.191+0800	INFO	lablog/lablog.go:45	ShardKV.sendToPeer start, shard: 8, tag: 3232360010185368357
+2020-06-23T20:17:26.191+0800	INFO	lablog/lablog.go:45	ShardKV.applyConfig, cfg num: 8, own shards: [], migrate shards: [], tag: 4056252400005876102
+2020-06-23T20:17:26.193+0800	INFO	lablog/lablog.go:45	ShardKV.apply, result: {false OK }, op: Config, tag: 4056252400005876102
+2020-06-23T20:17:26.194+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Config, tag: 4056252400005876102
+2020-06-23T20:17:26.195+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: MigrateTrigger, tag: 1927310952458425257
+2020-06-23T20:17:26.197+0800	INFO	lablog/lablog.go:45	ShardKV.applyMigrateTrigger, cfg num: 8, shard: 5, tag: 1927310952458425257, shard tag: 527812528178511592
+2020-06-23T20:17:26.197+0800	INFO	lablog/lablog.go:45	ShardKV.apply, result: {false OK }, op: MigrateTrigger, tag: 1927310952458425257
+2020-06-23T20:17:26.197+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: MigrateTrigger, tag: 1927310952458425257
+2020-06-23T20:17:26.297+0800	INFO	lablog/lablog.go:45	ShardKV.sendToPeer send fail, to: (100, 0), reply: {false ErrTimeout}, shard: 8, tag: 3232360010185368357
+2020-06-23T20:17:26.338+0800	INFO	lablog/lablog.go:45	ShardKV.migrateSend end, shard: 8
+2020-06-23T20:17:26.356+0800	INFO	lablog/lablog.go:45	ShardKV.syncConfig, cfg num: 8, req cfg num: -1, ret cfg num: 9, tag: 1613504854527379542
+2020-06-23T20:17:26.356+0800	INFO	lablog/lablog.go:45	ShardKV.request start, op: Config, tag: 1613504854527379542
+2020-06-23T20:17:26.358+0800	INFO	lablog/lablog.go:45	ShardKV.request wrong leader, op: Config, tag: 1613504854527379542
+2020-06-23T20:17:26.359+0800	INFO	lablog/lablog.go:45	ShardKV.request end, op: Config, tag: 1613504854527379542
+2020-06-23T20:17:26.404+0800	INFO	lablog/lablog.go:45	ShardKV.sendToPeer send fail, to: (100, 1), reply: {false ErrTimeout}, shard: 8, tag: 3232360010185368357
+2020-06-23T20:17:26.487+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: Config, tag: 687242750690328697
+2020-06-23T20:17:26.488+0800	INFO	lablog/lablog.go:45	ShardKV.applyConfig, cfg num: 9, own shards: [], migrate shards: [], tag: 687242750690328697
+2020-06-23T20:17:26.489+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: Config, tag: 687242750690328697
+2020-06-23T20:17:26.514+0800	INFO	lablog/lablog.go:45	ShardKV.sendToPeer send fail, to: (100, 2), reply: {true }, shard: 8, tag: 3232360010185368357
+2020-06-23T20:17:26.680+0800	INFO	lablog/lablog.go:45	ShardKV.sendToPeer send fail, to: (100, 0), reply: {true }, shard: 8, tag: 3232360010185368357
+2020-06-23T20:17:26.801+0800	INFO	lablog/lablog.go:45	ShardKV.sendToPeer send succ, to: (100, 1), shard: 8, tag: 3232360010185368357
+2020-06-23T20:17:26.801+0800	INFO	lablog/lablog.go:45	ShardKV.sendToPeer start, shard: 8, tag: 3232360010185368357
+2020-06-23T20:17:26.843+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: MigrateFinish, tag: 1884281103071788216
+2020-06-23T20:17:26.844+0800	INFO	lablog/lablog.go:45	ShardKV.applyMigrateFinish, cfg num: 9, shard: 8, tag: 1884281103071788216
+2020-06-23T20:17:26.845+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: MigrateFinish, tag: 1884281103071788216
+2020-06-23T20:17:27.010+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: MigrateFinish, tag: 4228812230998044705
+2020-06-23T20:17:27.011+0800	INFO	lablog/lablog.go:45	ShardKV.applyMigrateFinish, cfg num: 9, shard: 2, tag: 4228812230998044705
+2020-06-23T20:17:27.012+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: MigrateFinish, tag: 4228812230998044705
+2020-06-23T20:17:27.227+0800	INFO	lablog/lablog.go:45	ShardKV.apply start, op: MigrateFinish, tag: 1585736785950635489
+2020-06-23T20:17:27.227+0800	INFO	lablog/lablog.go:45	ShardKV.applyMigrateFinish, cfg num: 9, shard: 5, tag: 1585736785950635489
+2020-06-23T20:17:27.229+0800	INFO	lablog/lablog.go:45	ShardKV.apply end, op: MigrateFinish, tag: 1585736785950635489
+2020-06-23T20:17:27.421+0800	INFO	lablog/lablog.go:45	ShardKV.Kill

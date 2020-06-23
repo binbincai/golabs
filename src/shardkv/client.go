@@ -167,14 +167,14 @@ func (ck *Clerk) PutAppend(key string, value string, op string) {
 				srv := ck.make_end(servers[server])
 				var reply PutAppendReply
 				ck.logger.Printf(0, 0, "Clerk.PutAppend call server: (%d, %d), shard: %d, tag: %d",
-					gid, server, shard, gid)
+					gid, server, shard, args.Tag)
 				ok := srv.Call("ShardKV.PutAppend", &args, &reply)
 				if ok && reply.WrongLeader == false && reply.Err == OK {
 					ck.mu.Lock()
 					ck.prefers[gid] = server
 					ck.mu.Unlock()
 					ck.logger.Printf(0, 0, "Clerk.PutAppend call succ, server: (%d, %d), reply: %v, shard: %d, tag: %d",
-						gid, server, reply, shard, gid)
+						gid, server, reply, shard, args.Tag)
 					return
 				}
 				ck.logger.Printf(0, 0, "Clerk.PutAppend call fail, server: (%d, %d), reply: %v, shard: %d, tag: %d",

@@ -34,7 +34,7 @@ func MakeClerk(servers []*labrpc.ClientEnd) *Clerk {
 	ck := new(Clerk)
 	ck.servers = servers
 	// Your code here.
-	ck.logger = lablog.New(true, "shardmaster_client")
+	ck.logger = lablog.New(false, "shardmaster_client")
 	return ck
 }
 

@@ -286,7 +286,7 @@ func StartServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persister)
 	sm.pending = make(map[int64]chan ResultMsg)
 	sm.cache = make(map[int64]ResultMsg)
 
-	sm.logger = lablog.New(true, "shardmaster_server")
+	sm.logger = lablog.New(false, "shardmaster_server")
 	go sm.background()
 
 	sm.rf = raft.Make(servers, me, persister, sm.applyCh)
