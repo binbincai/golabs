@@ -1,6 +1,7 @@
 package shardkv
 
 import (
+	"context"
 	"fmt"
 	"github.com/binbincai/golabs/src/labgob"
 	"github.com/binbincai/golabs/src/lablog"
@@ -167,7 +168,10 @@ func (kv *ShardKV) syncConfig() {
 		configNum = -1
 	}
 	// 只有leader节点需要同步配置.
-	if !kv.rf.IsLeader() {
+	kv.mu.Unlock()
+	isLeader := kv.rf.IsLeader()
+	kv.mu.Lock()
+	if !isLeader {
 		return
 	}
 
@@ -177,17 +181,18 @@ func (kv *ShardKV) syncConfig() {
 	kv.fetchingConfig = true
 
 	kv.mu.Unlock()
-	var config shardmaster.Config
-	success := call(150*time.Millisecond, func(){
-		ck := shardmaster.MakeClerk(kv.masters)
-		config = ck.Query(configNum)
-	})
-	kv.mu.Lock()
-	if !success {
-		return
-	}
+	//var config shardmaster.Config
+	//success := call(150*time.Millisecond, func(){
+	//	ck := shardmaster.MakeClerk(kv.masters)
+	//	config = ck.Query(configNum)
+	//})
+	ck := shardmaster.MakeClerk(kv.masters)
+	ctx, cancel := context.WithTimeout(context.Background(), 150*time.Millisecond)
+	defer cancel()
+	config := ck.Query2(ctx, configNum)
+ 	kv.mu.Lock()
 
-	if kv.config.Num == config.Num {
+	if kv.config.Num >= config.Num {
 		return
 	}
 

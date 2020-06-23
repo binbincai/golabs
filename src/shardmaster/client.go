@@ -5,6 +5,7 @@ package shardmaster
 //
 
 import (
+	"context"
 	"github.com/binbincai/golabs/src/lablog"
 	"github.com/binbincai/golabs/src/labrpc"
 	"sync"
@@ -93,6 +94,49 @@ func (ck *Clerk) Query(num int) Config {
 		return false
 	})
 	ck.setPrevTag(args.Tag)
+	return repl.Config
+}
+
+func (ck *Clerk) Query2(ctx context.Context, num int) Config {
+	args := &QueryArgs{
+		Num: num,
+		Tag: nrand(),
+		PrevTag: ck.getPrevTag(),
+	}
+
+	ck.logger.Printf(0, 0, "Clerk.Query, num: %d, tag: %d", num, args.Tag)
+	defer ck.logger.Printf(0, 0, "Clerk.Query end, num: %d, tag: %d", num, args.Tag)
+
+	wait := make(chan QueryReply)
+	go ck.replicaCall(func(server *labrpc.ClientEnd) bool {
+		repl := &QueryReply{}
+		done := make(chan bool)
+		go func() {
+			ok := server.Call("ShardMaster.Query", args, repl)
+			if ok && repl.Err == "" {
+				ck.logger.Printf(0, 0, "Clerk.Query succ, num: %d, tag: %d, repl: %v", num, args.Tag, *repl)
+				done <- true
+				return
+			}
+			ck.logger.Printf(0, 0, "Clerk.Query fail, num: %d, tag: %d, repl: %v", num, args.Tag, *repl)
+			done <- false
+		}()
+
+		var succ bool
+		select {
+		case <- ctx.Done():
+			wait <- QueryReply{}
+			succ = true
+		case succ = <- done:
+			if succ {
+				wait <- *repl
+			}
+		}
+		return succ
+	})
+
+	ck.setPrevTag(args.Tag)
+	repl := <- wait
 	return repl.Config
 }
 
