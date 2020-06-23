@@ -5,6 +5,7 @@ package shardmaster
 //
 
 import (
+	"github.com/binbincai/golabs/src/lablog"
 	"github.com/binbincai/golabs/src/labrpc"
 	"sync"
 )
@@ -18,6 +19,7 @@ type Clerk struct {
 	mu sync.Mutex
 	preferIndex int
 	prevTag int64
+	logger *lablog.Logger
 }
 
 func nrand() int64 {
@@ -31,6 +33,7 @@ func MakeClerk(servers []*labrpc.ClientEnd) *Clerk {
 	ck := new(Clerk)
 	ck.servers = servers
 	// Your code here.
+	ck.logger = lablog.New(true, "shardmaster_client")
 	return ck
 }
 
@@ -75,10 +78,19 @@ func (ck *Clerk) Query(num int) Config {
 		PrevTag: ck.getPrevTag(),
 	}
 	repl := &QueryReply{}
+	ck.logger.Printf(0, 0, "Clerk.Query, num: %d, tag: %d", num, args.Tag)
+	defer ck.logger.Printf(0, 0, "Clerk.Query end, num: %d, tag: %d", num, args.Tag)
 	ck.replicaCall(func(server *labrpc.ClientEnd) bool {
 		repl = &QueryReply{}
 		ok := server.Call("ShardMaster.Query", args, repl)
-		return ok && repl.Err == ""
+		if ok && repl.Err == "" {
+			ck.logger.Printf(0, 0, "Clerk.Query succ, num: %d, tag: %d, repl: %v",
+				num, args.Tag, *repl)
+			return true
+		}
+		ck.logger.Printf(0, 0, "Clerk.Query fail, num: %d, tag: %d, repl: %v",
+			num, args.Tag, *repl)
+		return false
 	})
 	ck.setPrevTag(args.Tag)
 	return repl.Config
@@ -92,10 +104,19 @@ func (ck *Clerk) Join(servers map[int][]string) {
 	}
 	repl := &JoinReply{}
 	// Your code here.
+	ck.logger.Printf(0, 0, "Clerk.Join, servers: %v, tag: %d", servers, args.Tag)
+	defer ck.logger.Printf(0, 0, "Clerk.Join end, servers: %v, tag: %d", servers, args.Tag)
 	ck.replicaCall(func(server *labrpc.ClientEnd) bool {
 		repl = &JoinReply{}
 		ok := server.Call("ShardMaster.Join", args, repl)
-		return ok && repl.Err == ""
+		if ok && repl.Err == "" {
+			ck.logger.Printf(0, 0, "Clerk.Join succ, servers: %v, tag: %d, repl: %v",
+				servers, args.Tag, *repl)
+			return true
+		}
+		ck.logger.Printf(0, 0, "Clerk.Join fail, servers: %v, tag: %d, repl: %v",
+			servers, args.Tag, *repl)
+		return false
 	})
 	ck.setPrevTag(args.Tag)
 }
@@ -107,10 +128,19 @@ func (ck *Clerk) Leave(gids []int) {
 		PrevTag: ck.getPrevTag(),
 	}
 	repl := &LeaveReply{}
+	ck.logger.Printf(0, 0, "Clerk.Join, gids: %v, tag: %d", gids, args.Tag)
+	defer ck.logger.Printf(0, 0, "Clerk.Join end, gids: %v, tag: %d", gids, args.Tag)
 	ck.replicaCall(func(server *labrpc.ClientEnd) bool {
 		repl = &LeaveReply{}
 		ok := server.Call("ShardMaster.Leave", args, &repl)
-		return ok && repl.Err == ""
+		if ok && repl.Err == "" {
+			ck.logger.Printf(0, 0, "Clerk.Join succ, gids: %v, tag: %d, repl: %v",
+				gids, args.Tag, *repl)
+			return true
+		}
+		ck.logger.Printf(0, 0, "Clerk.Join fail, gids: %v, tag: %d, repl: %v",
+			gids, args.Tag, *repl)
+		return false
 	})
 	ck.setPrevTag(args.Tag)
 }
@@ -123,10 +153,19 @@ func (ck *Clerk) Move(shard int, gid int) {
 		PrevTag: ck.getPrevTag(),
 	}
 	repl := &MoveReply{}
+	ck.logger.Printf(0, 0, "Clerk.Move, shard: %d, gid: %v, tag: %d", shard, gid, args.Tag)
+	defer ck.logger.Printf(0, 0, "Clerk.Move end, shard: %d, gid: %v, tag: %d", shard, gid, args.Tag)
 	ck.replicaCall(func(server *labrpc.ClientEnd) bool {
 		repl = &MoveReply{}
 		ok := server.Call("ShardMaster.Move", args, &repl)
-		return ok && repl.Err == ""
+		if ok && repl.Err == "" {
+			ck.logger.Printf(0, 0, "Clerk.Move succ, shard: %d, gid: %v, tag: %d, repl: %v",
+				shard, gid, args.Tag, *repl)
+			return true
+		}
+		ck.logger.Printf(0, 0, "Clerk.Move fail, shard: %d, gid: %v, tag: %d, repl: %v",
+			shard, gid, args.Tag, *repl)
+		return false
 	})
 	ck.setPrevTag(args.Tag)
 }

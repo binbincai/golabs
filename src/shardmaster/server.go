@@ -2,6 +2,7 @@ package shardmaster
 
 import (
 	"github.com/binbincai/golabs/src/labgob"
+	"github.com/binbincai/golabs/src/lablog"
 	"github.com/binbincai/golabs/src/labrpc"
 	"github.com/binbincai/golabs/src/raft"
 	"sync"
@@ -21,6 +22,8 @@ type ShardMaster struct {
 	requestCh chan *Op
 	pending map[int64]chan ResultMsg
 	cache map[int64]ResultMsg
+
+	logger *lablog.Logger
 }
 
 type Op struct {
@@ -70,15 +73,19 @@ func (sm *ShardMaster) apply(applyMsg raft.ApplyMsg)  {
 	if !ok {
 		return
 	}
-	if _, ok := sm.cache[op.Tag]; ok {
+	sm.mu.Lock()
+	_, handled := sm.cache[op.Tag]
+	sm.mu.Unlock()
+	if handled {
 		return
 	}
-	DPrintf("ShardMaster.apply start, join: %v, leave: %v, query: %v",
+
+	sm.logger.Printf(0, sm.me, "ShardMaster.apply start, join: %v, leave: %v, query: %v",
 		op.JoinArgs!=nil, op.LeaveArgs!=nil, op.QueryArgs!=nil)
 	defer func() {
-		DPrintf("ShardMaster.apply end, cfg cnt: %d", len(sm.configs))
+		sm.logger.Printf(0, sm.me, "ShardMaster.apply end, cfg cnt: %d", len(sm.configs))
 		for i, config := range sm.configs {
-			DPrintf("\tconfig %d: %v", i, config)
+			sm.logger.Printf(0, sm.me,"\tconfig %d: %v", i, config)
 		}
 	}()
 
@@ -133,14 +140,19 @@ func (sm *ShardMaster) apply(applyMsg raft.ApplyMsg)  {
 		close(resultMsgCh)
 		delete(sm.pending, op.Tag)
 	}
+
+	if repl.Err == "" {
+		sm.cache[op.Tag] = repl
+	}
 }
 
 func (sm *ShardMaster) request(op *Op) {
-	DPrintf("ShardMaster.request start")
-	defer DPrintf("ShardMaster.request end")
+	sm.logger.Printf(0, sm.me, "ShardMaster.request start")
+	defer sm.logger.Printf(0, sm.me, "ShardMaster.request end")
 	sm.mu.Lock()
 	if repl, ok := sm.cache[op.Tag]; ok {
 		op.ResultMsgCh <- repl
+		close(op.ResultMsgCh)
 		return
 	}
 	delete(sm.cache, op.PrevTag)
@@ -187,6 +199,8 @@ func (sm *ShardMaster) waitExec(op *Op) (resultMsg ResultMsg) {
 }
 
 func (sm *ShardMaster) Join(args *JoinArgs, reply *JoinReply) {
+	sm.logger.Printf(0, sm.me, "ShardMaster.Join start, tag: %d", args.Tag)
+	defer sm.logger.Printf(0, sm.me, "ShardMaster.Join end, tag: %d", args.Tag)
 	// Your code here.
 	op := &Op{}
 	op.JoinArgs = args
@@ -197,6 +211,8 @@ func (sm *ShardMaster) Join(args *JoinArgs, reply *JoinReply) {
 }
 
 func (sm *ShardMaster) Leave(args *LeaveArgs, reply *LeaveReply) {
+	sm.logger.Printf(0, sm.me, "ShardMaster.Leave start, tag: %d", args.Tag)
+	defer sm.logger.Printf(0, sm.me, "ShardMaster.Leave end, tag: %d", args.Tag)
 	// Your code here.
 	op := &Op{}
 	op.LeaveArgs = args
@@ -207,6 +223,8 @@ func (sm *ShardMaster) Leave(args *LeaveArgs, reply *LeaveReply) {
 }
 
 func (sm *ShardMaster) Move(args *MoveArgs, reply *MoveReply) {
+	sm.logger.Printf(0, sm.me, "ShardMaster.Move start, tag: %d", args.Tag)
+	defer sm.logger.Printf(0, sm.me, "ShardMaster.Move end, tag: %d", args.Tag)
 	// Your code here.
 	op := &Op{}
 	op.MoveArgs = args
@@ -217,6 +235,8 @@ func (sm *ShardMaster) Move(args *MoveArgs, reply *MoveReply) {
 }
 
 func (sm *ShardMaster) Query(args *QueryArgs, reply *QueryReply) {
+	sm.logger.Printf(0, sm.me, "ShardMaster.Query start, tag: %d", args.Tag)
+	defer sm.logger.Printf(0, sm.me, "ShardMaster.Query end, tag: %d", args.Tag)
 	// Your code here.
 	op := &Op{}
 	op.QueryArgs = args
@@ -237,7 +257,7 @@ func (sm *ShardMaster) Kill() {
 	// Your code here, if desired.
 	sm.exitCh <- false
 	sm.rf.Kill()
-	DPrintf("ShardMaster.Kill")
+	sm.logger.Printf(0, 0, "ShardMaster.Kill")
 }
 
 // needed by shardkv tester
@@ -265,10 +285,12 @@ func StartServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persister)
 	sm.requestCh = make(chan *Op)
 	sm.pending = make(map[int64]chan ResultMsg)
 	sm.cache = make(map[int64]ResultMsg)
+
+	sm.logger = lablog.New(true, "shardmaster_server")
 	go sm.background()
 
 	sm.rf = raft.Make(servers, me, persister, sm.applyCh)
 
-	DPrintf("StartServer")
+	sm.logger.Printf(0, sm.me, "StartServer")
 	return sm
 }

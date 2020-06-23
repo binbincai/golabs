@@ -9,6 +9,7 @@ package shardkv
 //
 
 import (
+	"github.com/binbincai/golabs/src/lablog"
 	"github.com/binbincai/golabs/src/labrpc"
 	"sync"
 )
@@ -47,6 +48,8 @@ type Clerk struct {
 	mu sync.Mutex
 	prevTag int64
 	prefers map[int]int
+
+	logger *lablog.Logger
 }
 
 //
@@ -64,6 +67,7 @@ func MakeClerk(masters []*labrpc.ClientEnd, make_end func(string) *labrpc.Client
 	ck.make_end = make_end
 	// You'll have to add code here.
 	ck.prefers = make(map[int]int)
+	ck.logger = lablog.New(true, "shardkv_client")
 	return ck
 }
 
@@ -86,12 +90,13 @@ func (ck *Clerk) setPrevTag(tag int64) {
 // You will have to modify this function.
 //
 func (ck *Clerk) Get(key string) string {
-	DPrintf("Clerk.Get start")
-	defer DPrintf("Clerk.Get end")
 	args := GetArgs{}
 	args.Key = key
 	args.Tag = nrand()
 	args.PrevTag = ck.getPrevTag()
+
+	ck.logger.Printf(0,0, "Clerk.Get start, key: %s, tag: %d", args.Key, args.Tag)
+	defer ck.logger.Printf(0, 0,"Clerk.Get end, key: %s, tag: %d", args.Key, args.Tag)
 
 	for {
 		shard := key2shard(key)
@@ -106,15 +111,18 @@ func (ck *Clerk) Get(key string) string {
 				server = (prefer+si)%len(servers)
 				srv := ck.make_end(servers[server])
 				var reply GetReply
-				DPrintf("Clerk.Get call server %d of total %d, shard: %d, gid: %d",
-					server, len(servers), shard, gid)
+				ck.logger.Printf(0,0, "Clerk.Get call server: (%d,%d), tag: %d", gid, server, args.Tag)
 				ok := srv.Call("ShardKV.Get", &args, &reply)
 				if ok && reply.WrongLeader == false && (reply.Err == OK || reply.Err == ErrNoKey) {
 					ck.mu.Lock()
 					ck.prefers[gid] = server
 					ck.mu.Unlock()
+					ck.logger.Printf(0,0, "Clerk.Get call succ, server: (%d,%d), tag: %d, reply: %v",
+						gid, server, args.Tag, reply)
 					return reply.Value
 				}
+				ck.logger.Printf(0,0, "Clerk.Get call fail, server: (%d,%d), tag: %d, reply: %v",
+					gid, server, args.Tag, reply)
 				if ok && (reply.Err == ErrWrongGroup) {
 					break
 				}
@@ -134,14 +142,17 @@ func (ck *Clerk) Get(key string) string {
 // You will have to modify this function.
 //
 func (ck *Clerk) PutAppend(key string, value string, op string) {
-	DPrintf("Clerk.PutAppend start")
-	defer DPrintf("Clerk.PutAppend end")
 	args := PutAppendArgs{}
 	args.Key = key
 	args.Value = value
 	args.Op = op
 	args.Tag = nrand()
 	args.PrevTag = ck.getPrevTag()
+
+	ck.logger.Printf(0, 0, "Clerk.PutAppend start, op: %s, key: %s, value: %s, tag: %d",
+		args.Op, args.Key, args.Value, args.Tag)
+	defer ck.logger.Printf(0, 0, "Clerk.PutAppend end, op: %s, key: %s, value: %s, tag: %d",
+		args.Op, args.Key, args.Value, args.Tag)
 
 	for {
 		shard := key2shard(key)
@@ -155,15 +166,19 @@ func (ck *Clerk) PutAppend(key string, value string, op string) {
 				server = (prefer+si)%len(servers)
 				srv := ck.make_end(servers[server])
 				var reply PutAppendReply
-				DPrintf("Clerk.PutAppend call server %d of total %d, shard: %d, gid: %d",
-					server, len(servers), shard, gid)
+				ck.logger.Printf(0, 0, "Clerk.PutAppend call server: (%d, %d), shard: %d, tag: %d",
+					gid, server, shard, gid)
 				ok := srv.Call("ShardKV.PutAppend", &args, &reply)
 				if ok && reply.WrongLeader == false && reply.Err == OK {
 					ck.mu.Lock()
 					ck.prefers[gid] = server
 					ck.mu.Unlock()
+					ck.logger.Printf(0, 0, "Clerk.PutAppend call succ, server: (%d, %d), reply: %v, shard: %d, tag: %d",
+						gid, server, reply, shard, gid)
 					return
 				}
+				ck.logger.Printf(0, 0, "Clerk.PutAppend call fail, server: (%d, %d), reply: %v, shard: %d, tag: %d",
+					gid, server, reply, shard, gid)
 				if ok && reply.Err == ErrWrongGroup {
 					break
 				}
