@@ -286,6 +286,10 @@ func (kv *ShardKV) migrateTrigger() {
 	if len(kv.migrate) == 0 {
 		return
 	}
+	// 同一个时刻只有一个在迁移.
+	if len(kv.migrated) != 0 {
+		return
+	}
 
 	for shard, _ := range kv.migrate {
 		func (shard int) {
