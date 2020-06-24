@@ -95,11 +95,11 @@ func (ck *Clerk) Get(key string) string {
 	args.Tag = nrand()
 	args.PrevTag = ck.getPrevTag()
 
-	ck.logger.Printf(0,0, "Clerk.Get start, key: %s, tag: %d", args.Key, args.Tag)
-	defer ck.logger.Printf(0, 0,"Clerk.Get end, key: %s, tag: %d", args.Key, args.Tag)
+	shard := key2shard(args.Key)
+	ck.logger.Printf(0,0, "Clerk.Get start, key: %s, shard: %d, tag: %d", args.Key, shard, args.Tag)
+	defer ck.logger.Printf(0, 0,"Clerk.Get end, key: %s, shard: %d, tag: %d", args.Key, shard, args.Tag)
 
 	for {
-		shard := key2shard(key)
 		gid := ck.config.Shards[shard]
 		if servers, ok := ck.config.Groups[gid]; ok {
 			// try each server for the shard.
@@ -111,18 +111,18 @@ func (ck *Clerk) Get(key string) string {
 				server = (prefer+si)%len(servers)
 				srv := ck.make_end(servers[server])
 				var reply GetReply
-				ck.logger.Printf(0,0, "Clerk.Get call server: (%d,%d), tag: %d", gid, server, args.Tag)
+				ck.logger.Printf(0,0, "Clerk.Get call server: (%d,%d), shard: %d, tag: %d", gid, server, shard, args.Tag)
 				ok := srv.Call("ShardKV.Get", &args, &reply)
 				if ok && reply.WrongLeader == false && (reply.Err == OK || reply.Err == ErrNoKey) {
 					ck.mu.Lock()
 					ck.prefers[gid] = server
 					ck.mu.Unlock()
-					ck.logger.Printf(0,0, "Clerk.Get call succ, server: (%d,%d), tag: %d, reply: %v",
-						gid, server, args.Tag, reply)
+					ck.logger.Printf(0,0, "Clerk.Get call succ, server: (%d,%d), shard: %d, tag: %d, reply: %v",
+						gid, server, shard, args.Tag, reply)
 					return reply.Value
 				}
-				ck.logger.Printf(0,0, "Clerk.Get call fail, server: (%d,%d), tag: %d, reply: %v",
-					gid, server, args.Tag, reply)
+				ck.logger.Printf(0,0, "Clerk.Get call fail, server: (%d,%d), shard: %d, tag: %d, reply: %v",
+					gid, server, shard, args.Tag, reply)
 				if ok && (reply.Err == ErrWrongGroup) {
 					break
 				}
@@ -149,13 +149,13 @@ func (ck *Clerk) PutAppend(key string, value string, op string) {
 	args.Tag = nrand()
 	args.PrevTag = ck.getPrevTag()
 
-	ck.logger.Printf(0, 0, "Clerk.PutAppend start, op: %s, key: %s, value: %s, tag: %d",
-		args.Op, args.Key, args.Value, args.Tag)
-	defer ck.logger.Printf(0, 0, "Clerk.PutAppend end, op: %s, key: %s, value: %s, tag: %d",
-		args.Op, args.Key, args.Value, args.Tag)
+	shard := key2shard(key)
+	ck.logger.Printf(0, 0, "Clerk.PutAppend start, op: %s, key: %s, value: %s, shard: %d, tag: %d",
+		args.Op, args.Key, args.Value, shard, args.Tag)
+	defer ck.logger.Printf(0, 0, "Clerk.PutAppend end, op: %s, key: %s, value: %s, shard: %d, tag: %d",
+		args.Op, args.Key, args.Value, shard, args.Tag)
 
 	for {
-		shard := key2shard(key)
 		gid := ck.config.Shards[shard]
 		if servers, ok := ck.config.Groups[gid]; ok {
 			ck.mu.Lock()

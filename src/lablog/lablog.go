@@ -50,3 +50,9 @@ func Assert(cond bool) {
 		panic("")
 	}
 }
+
+func Assert2(cond bool, msg string) {
+	if !cond {
+		panic(msg)
+	}
+}
