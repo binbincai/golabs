@@ -54,6 +54,7 @@ type MigrateArgs struct {
 	KeyValues map[string]string
 	Tag int64
 	PrevTag int64
+	ConfigNum int
 }
 
 type MigrateReply struct {
