@@ -55,6 +55,7 @@ type MigrateArgs struct {
 	Tag int64
 	PrevTag int64
 	ConfigNum int
+	Cache map[int64]Result
 }
 
 type MigrateReply struct {

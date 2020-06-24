@@ -30,6 +30,7 @@ type Op struct {
 	// MigrateShard
 	Shard     int
 	KeyValues map[string]string
+	Cache map[int64]Result
 	TriggerTags map[int]int64
 	SendTag   int64
 	FinishTag int64
@@ -71,6 +72,7 @@ type ShardKV struct {
 	migratedSending   bool
 	migrateCh         chan bool
 	needSync 		  bool
+	shardCache map[int]map[int64]Result
 
 	prefers           map[int]int
 
@@ -251,13 +253,13 @@ func (kv *ShardKV) syncConfig() {
 		op.TriggerTags[shard] = nrand()
 	}
 
+	kv.mu.Unlock()
 	call(200*time.Millisecond, func() {
-		kv.mu.Unlock()
-		defer kv.mu.Lock()
 		lablog.Assert(op.ResultCh != nil)
 		kv.requestCh <- op
 		<-op.ResultCh // 等待请求被处理
 	})
+	kv.mu.Lock()
 }
 
 func (kv *ShardKV) migrateTrigger() {
@@ -316,7 +318,7 @@ func (kv *ShardKV) migrateTrigger() {
 	}
 }
 
-func (kv *ShardKV) sendToPeer(config shardmaster.Config, tag int64, shard int, keyValues map[string]string) bool {
+func (kv *ShardKV) sendToPeer(config shardmaster.Config, tag int64, shard int, keyValues map[string]string, cache map[int64]Result) bool {
 	kv.mu.Lock()
 	preferIndex := kv.prefers[config.Shards[shard]]
 	kv.mu.Unlock()
@@ -326,6 +328,7 @@ func (kv *ShardKV) sendToPeer(config shardmaster.Config, tag int64, shard int, k
 		Shard: shard,
 		KeyValues: keyValues,
 		ConfigNum: config.Num,
+		Cache: cache,
 	}
 	gid := config.Shards[shard]
 	servers := config.Groups[gid]
@@ -379,6 +382,7 @@ func (kv *ShardKV) migrateSend() {
 			config := kv.config
 			tag := kv.migrateSendTag[shard]
 			finishTag := kv.migrateFinishTag[shard]
+			cache := kv.shardCache[shard]
 			lablog.Assert(tag != 0)
 			lablog.Assert(finishTag != 0)
 			kv.mu.Unlock()
@@ -390,7 +394,7 @@ func (kv *ShardKV) migrateSend() {
 			lablog.Assert(keyValues != nil)
 			var success bool
 			call(500*time.Millisecond, func() {
-				success = kv.sendToPeer(config, tag, shard, keyValues)
+				success = kv.sendToPeer(config, tag, shard, keyValues, cache)
 			})
 			if !success {
 				return
@@ -504,9 +508,9 @@ func (kv *ShardKV) applyConfig(op Op) Result {
 		Err: OK,
 	}
 	// TODO: 这里如何搞?
-	//if op.Config.Num <= kv.config.Num {
-	//	return resultMsg
-	//}
+	if op.Config.Num < kv.config.Num {
+		return resultMsg
+	}
 
 	kv.config = op.Config
 	if kv.config.Num == 2 {
@@ -579,7 +583,13 @@ func (kv *ShardKV) applyMigrateReceive(op Op) Result {
 	for k, v := range op.KeyValues {
 		keyValues[k] = v
 	}
+	cache := make(map[int64]Result)
+	for k, v := range op.Cache {
+		cache[k] = v
+	}
 	kv.own[op.Shard] = keyValues
+	kv.shardCache[op.Shard] = cache
+
 	if len(kv.migrate) > 0 {
 		go func() {
 			kv.migrateCh <- false
@@ -598,6 +608,8 @@ func (kv *ShardKV) applyMigrateFinish(op Op) Result {
 	delete(kv.migrated, op.Shard)
 	delete(kv.migrateSendTag, op.Shard)
 	delete(kv.migrateFinishTag, op.Shard)
+	delete(kv.shardCache, op.Shard)
+	kv.shardCache[op.Shard] = make(map[int64]Result)
 	kv.logger.Printf(kv.gid, kv.me, "ShardKV.applyMigrateFinish, cfg num: %d, shard: %d, tag: %d, %s",
 		kv.config.Num, op.Shard, op.Tag, kv.shardInfoWithLock())
 	return resultMsg
@@ -617,8 +629,16 @@ func (kv *ShardKV) apply(applyMsg raft.ApplyMsg) {
 
 	// 检查是否已经处理过该请求.
 	kv.mu.Lock()
-	_, handled := kv.cache[op.Tag]
+	var handled bool
+	switch op.Op {
+	case "Get", "Put", "Append":
+		shard := key2shard(op.Key)
+		_, handled = kv.shardCache[shard][op.Tag]
+	case "Config", "MigrateTrigger", "MigrateReceive", "MigrateFinish":
+		_, handled = kv.cache[op.Tag]
+	}
 	kv.mu.Unlock()
+
 	if handled {
 		return
 	}
@@ -652,9 +672,16 @@ func (kv *ShardKV) apply(applyMsg raft.ApplyMsg) {
 		delete(kv.pending, op.Tag)
 		kv.logger.Printf(kv.gid, kv.me, "ShardKV.apply, result: %v, op: %s, tag: %d", resultMsg, op.Op, op.Tag)
 	}
+	
 	// 只对成功的请求进行cache.
 	if resultMsg.Err == OK {
-		kv.cache[op.Tag] = resultMsg
+		switch op.Op {
+		case "Get", "Put", "Append":
+			shard := key2shard(op.Key)
+			kv.shardCache[shard][op.Tag] = resultMsg
+		case "Config", "MigrateTrigger", "MigrateReceive", "MigrateFinish":
+			kv.cache[op.Tag] = resultMsg
+		}
 	}
 }
 
@@ -727,6 +754,7 @@ func (kv *ShardKV) MigrateShard(args *MigrateArgs, reply *MigrateReply) {
 		Op: "MigrateReceive",
 		Shard: args.Shard,
 		KeyValues: args.KeyValues,
+		Cache: args.Cache,
 		ConfigNum: args.ConfigNum,
 		Tag: args.Tag,
 		PrevTag: args.PrevTag,
@@ -823,9 +851,12 @@ func StartServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persister,
 	kv.migrateFinishTag = make(map[int]int64)
 	kv.migrateCh = make(chan bool)
 	kv.needSync = true
+	kv.shardCache = make(map[int]map[int64]Result)
+	for shard:=0; shard<shardmaster.NShards; shard++ {
+		kv.shardCache[shard] = make(map[int64]Result)
+	}
 
 	kv.prefers = make(map[int]int)
-
 	kv.pending = make(map[int64]chan Result)
 	kv.cache = make(map[int64]Result)
 	kv.exitApplyCh = make(chan bool)
