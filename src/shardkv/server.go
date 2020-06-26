@@ -59,20 +59,11 @@ type ShardKV struct {
 	maxraftstate int // snapshot if log grows this big
 
 	// Your definitions here.
-	// own: 当前这个shard kv负责的shard.
-	// migrate: 当前这个shard kv已经不负责该shard, 但是还未被多数派认可, 仍然可以写入.
-	// migrated: 当前这个shard kv已经不负责该shard, 已经被多数派认可, 不可写入, 等待发送.
-	own               map[int]map[string]string
-	migrate           map[int]map[string]string
-	migrated          map[int]map[string]string
-	migrateTriggerTag map[int]int64
-	migrateSendTag    map[int]int64
-	migrateFinishTag  map[int]int64
 	migrateTriggering bool
 	migratedSending   bool
 	migrateCh         chan bool
 	needSync 		  bool
-	shardCache map[int]map[int64]Result
+	shards *Shards
 
 	prefers           map[int]int
 
@@ -90,25 +81,7 @@ type ShardKV struct {
 }
 
 func (kv *ShardKV) shardInfoWithLock() string {
-	info := ""
-	shards := make([]int, 0)
-	for shard := range kv.own {
-		shards = append(shards, shard)
-	}
-	info += fmt.Sprintf("own: %v", shards)
-
-	shards = shards[0:0]
-	for shard := range kv.migrate {
-		shards = append(shards, shard)
-	}
-	info += fmt.Sprintf(", migrate: %v", shards)
-
-	shards = shards[0:0]
-	for shard := range kv.migrated {
-		shards = append(shards, shard)
-	}
-	info += fmt.Sprintf(", migrated: %v", shards)
-	return info
+	return kv.shards.string()
 }
 
 func (kv *ShardKV) shardInfo() string{
@@ -119,7 +92,7 @@ func (kv *ShardKV) shardInfo() string{
 
 func (kv *ShardKV) requestUser(op Op) bool {
 	kv.mu.Lock()
-	keyValues := kv.getKeyValues(op.Key)
+	keyValues := kv.shards.getKeyValues(op.Key)
 	kv.mu.Unlock()
 	if keyValues == nil {
 		lablog.Assert(op.ResultCh != nil)
@@ -216,15 +189,9 @@ func (kv *ShardKV) syncConfig() {
 	}
 	kv.fetchingConfig = true
 
-	if len(kv.migrate) != 0 {
+	if !kv.shards.canRsyncConfig() {
 		return
 	}
-	if len(kv.migrated) != 0 {
-		return
-	}
-	lablog.Assert(len(kv.migrateTriggerTag) == 0)
-	lablog.Assert(len(kv.migrateSendTag) == 0)
-	lablog.Assert(len(kv.migrateFinishTag) == 0)
 
 	kv.mu.Unlock()
 	ck := shardmaster.MakeClerk(kv.masters)
@@ -278,44 +245,31 @@ func (kv *ShardKV) migrateTrigger() {
 	}
 	kv.migrateTriggering = true
 
-	// 触发迁移操作, 将migrate内的kv
-	// 迁移到migrated.
-	if len(kv.migrate) == 0 {
+	can, shard, tag := kv.shards.getNextTrigger()
+	if !can {
 		return
 	}
-	// 同一个时刻只有一个在迁移.
-	if len(kv.migrated) != 0 {
-		return
+	//lablog.Assert(shard != 0)
+	lablog.Assert(tag != 0)
+	shardTag := nrand()
+	finishTag := nrand()
+	kv.logger.Printf(kv.gid, kv.me, "ShardKV.migrateTrigger start, shard: %d, tag: %d", shard, tag)
+	kv.mu.Unlock()
+	op := Op{
+		Op:        "MigrateTrigger",
+		Shard:     shard,
+		Tag:       tag,
+		SendTag:   shardTag,
+		FinishTag: finishTag,
+		ResultCh:  make(chan Result, 1),
 	}
-
-	for shard := range kv.migrate {
-		func (shard int) {
-			tag := kv.migrateTriggerTag[shard]
-			lablog.Assert(tag != 0)
-			shardTag := nrand()
-			finishTag := nrand()
-			kv.logger.Printf(kv.gid, kv.me, "ShardKV.migrateTrigger start, shard: %d, tag: %d", shard, tag)
-			kv.mu.Unlock()
-			defer func() {
-				kv.mu.Lock()
-				kv.logger.Printf(kv.gid,kv.me, "ShardKV.migrateTrigger end, shard: %d, tag: %d", shard, tag)
-			}()
-			op := Op{
-				Op:        "MigrateTrigger",
-				Shard:     shard,
-				Tag:       tag,
-				SendTag:   shardTag,
-				FinishTag: finishTag,
-				ResultCh:  make(chan Result, 1),
-			}
-			call(200*time.Millisecond, func() {
-				lablog.Assert(op.ResultCh != nil)
-				kv.requestCh <- op
-				<- op.ResultCh
-			})
-		}(shard)
-		break // 一次迁移一个shard的keyValue
-	}
+	call(200*time.Millisecond, func() {
+		lablog.Assert(op.ResultCh != nil)
+		kv.requestCh <- op
+		<- op.ResultCh
+	})
+	kv.mu.Lock()
+	kv.logger.Printf(kv.gid,kv.me, "ShardKV.migrateTrigger end, shard: %d, tag: %d", shard, tag)
 }
 
 func (kv *ShardKV) sendToPeer(config shardmaster.Config, tag int64, shard int, keyValues map[string]string, cache map[int64]Result) bool {
@@ -372,49 +326,43 @@ func (kv *ShardKV) migrateSend() {
 	}
 	kv.migratedSending = true
 
-	if len(kv.migrated) == 0 {
+	has, shard, sendTag, finishTag, keyValues, cache := kv.shards.getMigrateSend()
+	if !has {
+		return
+	}
+	//lablog.Assert(shard != 0)
+	lablog.Assert(sendTag != 0)
+	lablog.Assert(finishTag != 0)
+	lablog.Assert(keyValues != nil)
+	lablog.Assert(cache != nil)
+	config := kv.config
+
+	kv.mu.Unlock()
+	kv.logger.Printf(kv.gid, kv.me, "ShardKV.migrateSend start, shard: %d", shard)
+	var success bool
+	call(500*time.Millisecond, func() {
+		success = kv.sendToPeer(config, sendTag, shard, keyValues, cache)
+	})
+	kv.logger.Printf(kv.gid, kv.me, "ShardKV.migrateSend end, shard: %d", shard)
+	kv.mu.Lock()
+	if !success {
 		return
 	}
 
-	for shard, keyValues := range kv.migrated {
-		func(){
-			kv.logger.Printf(kv.gid, kv.me, "ShardKV.migrateSend start, shard: %d", shard)
-			config := kv.config
-			tag := kv.migrateSendTag[shard]
-			finishTag := kv.migrateFinishTag[shard]
-			cache := kv.shardCache[shard]
-			lablog.Assert(tag != 0)
-			lablog.Assert(finishTag != 0)
-			kv.mu.Unlock()
-			defer func() {
-				kv.mu.Lock()
-				kv.logger.Printf(kv.gid, kv.me, "ShardKV.migrateSend end, shard: %d", shard)
-			}()
-
-			lablog.Assert(keyValues != nil)
-			var success bool
-			call(500*time.Millisecond, func() {
-				success = kv.sendToPeer(config, tag, shard, keyValues, cache)
-			})
-			if !success {
-				return
-			}
-
-			op := Op {
-				Op:        "MigrateFinish",
-				Shard:     shard,
-				Tag: finishTag,
-				ResultCh: make(chan Result, 1),
-			}
-			kv.logger.Printf(kv.gid, kv.me, "ShardKV.migrateSend send MigrateFinish, shard: %d, tag: %d", shard, op.Tag)
-			call(200*time.Millisecond, func() {
-				lablog.Assert(op.ResultCh != nil)
-				kv.requestCh <- op
-				<- op.ResultCh
-			})
-		}()
-		break
+	kv.mu.Unlock()
+	op := Op {
+		Op:        "MigrateFinish",
+		Shard:     shard,
+		Tag: finishTag,
+		ResultCh: make(chan Result, 1),
 	}
+	kv.logger.Printf(kv.gid, kv.me, "ShardKV.migrateSend send MigrateFinish, shard: %d, tag: %d", shard, op.Tag)
+	call(200*time.Millisecond, func() {
+		lablog.Assert(op.ResultCh != nil)
+		kv.requestCh <- op
+		<- op.ResultCh
+	})
+	kv.mu.Lock()
 }
 
 func (kv *ShardKV) backgroundSync() {
@@ -439,24 +387,11 @@ func (kv *ShardKV) backgroundSync() {
 	}
 }
 
-func (kv *ShardKV) getKeyValues(key string) map[string]string {
-	shard := key2shard(key)
-	if keyValue, ok := kv.own[shard]; ok {
-		lablog.Assert(keyValue != nil)
-		return keyValue
-	}
-	if keyValue, ok := kv.migrate[shard]; ok {
-		lablog.Assert(keyValue != nil)
-		return keyValue
-	}
-	return nil
-}
-
 func (kv *ShardKV) applyGet(op Op) Result {
 	resultMsg := Result{
 		Err: OK,
 	}
-	keyValue := kv.getKeyValues(op.Key)
+	keyValue := kv.shards.getKeyValues(op.Key)
 	if keyValue == nil {
 		resultMsg.Err = ErrWrongGroup
 		return resultMsg
@@ -474,7 +409,7 @@ func (kv *ShardKV) applyPut(op Op) Result {
 	resultMsg := Result{
 		Err: OK,
 	}
-	keyValue := kv.getKeyValues(op.Key)
+	keyValue := kv.shards.getKeyValues(op.Key)
 	if keyValue == nil {
 		resultMsg.Err = ErrWrongGroup
 		return resultMsg
@@ -490,7 +425,7 @@ func (kv *ShardKV) applyAppend(op Op) Result {
 	resultMsg := Result{
 		Err: OK,
 	}
-	keyValue := kv.getKeyValues(op.Key)
+	keyValue := kv.shards.getKeyValues(op.Key)
 	if keyValue == nil {
 		resultMsg.Err = ErrWrongGroup
 		return resultMsg
@@ -507,39 +442,21 @@ func (kv *ShardKV) applyConfig(op Op) Result {
 	resultMsg := Result{
 		Err: OK,
 	}
-	// TODO: 这里如何搞?
 	if op.Config.Num < kv.config.Num {
 		return resultMsg
 	}
 
 	kv.config = op.Config
 	if kv.config.Num == 2 {
-		for shard, gid := range kv.config.Shards {
-			if gid != kv.gid {
-				continue
-			}
-			kv.own[shard] = make(map[string]string)
-		}
-		kv.logger.Printf(kv.gid, kv.me, "ShardKV.applyConfig, cfg num: %d, %s, tag: %d",
+		kv.shards.init(kv.config)
+		kv.logger.Printf(kv.gid, kv.me, "ShardKV.applyConfig init, cfg num: %d, %s, tag: %d",
 			kv.config.Num, kv.shardInfoWithLock(), op.Tag)
 	}
 
-	migrateShards := make([]int, 0)
-	for shard := range kv.own {
-		if kv.config.Shards[shard] != kv.gid {
-			kv.migrate[shard] = kv.own[shard]
-			kv.migrateTriggerTag[shard] = op.TriggerTags[shard]
-			migrateShards = append(migrateShards, shard)
-		}
-	}
-	for _, shard := range migrateShards {
-		delete(kv.own, shard)
-	}
-	if len(migrateShards) > 0 {
-		go func() {
-			kv.migrateCh <- false
-		}()
-	}
+	kv.shards.tryMigrate(kv.config, op.TriggerTags, func(){
+		kv.migrateCh <- false
+	})
+
 	kv.logger.Printf(kv.gid, kv.me, "ShardKV.applyConfig, cfg num: %d, %s, tag: %d",
 		kv.config.Num, kv.shardInfoWithLock(), op.Tag)
 	return resultMsg
@@ -550,19 +467,9 @@ func (kv *ShardKV) applyMigrateTrigger(op Op) Result {
 		Err: OK,
 	}
 
-	lablog.Assert2(kv.migrate[op.Shard] != nil, fmt.Sprintf("gid: %d, rid: %d", kv.gid, kv.me))
-
-	kv.migrated[op.Shard] = kv.migrate[op.Shard]
-	kv.migrateSendTag[op.Shard] = op.SendTag
-	kv.migrateFinishTag[op.Shard] = op.FinishTag
-	delete(kv.migrate, op.Shard)
-	delete(kv.migrateTriggerTag, op.Shard)
-	lablog.Assert(kv.migrated[op.Shard] != nil)
-	if len(kv.migrated) > 0 {
-		go func() {
-			kv.migrateCh <- false
-		}()
-	}
+	kv.shards.trigger(op.Shard, op.SendTag, op.FinishTag, func(){
+		kv.migrateCh <- false
+	})
 
 	kv.logger.Printf(kv.gid, kv.me, "ShardKV.applyMigrateTrigger, cfg num: %d, shard: %d, tag: %d, " +
 		"shard tag: %d, finish tag: %d, %s", kv.config.Num, op.Shard, op.Tag, op.SendTag, op.FinishTag, kv.shardInfoWithLock())
@@ -578,23 +485,7 @@ func (kv *ShardKV) applyMigrateReceive(op Op) Result {
 		Err: OK,
 	}
 
-	lablog.Assert(op.KeyValues != nil)
-	keyValues := make(map[string]string)
-	for k, v := range op.KeyValues {
-		keyValues[k] = v
-	}
-	cache := make(map[int64]Result)
-	for k, v := range op.Cache {
-		cache[k] = v
-	}
-	kv.own[op.Shard] = keyValues
-	kv.shardCache[op.Shard] = cache
-
-	if len(kv.migrate) > 0 {
-		go func() {
-			kv.migrateCh <- false
-		}()
-	}
+	kv.shards.receive(op.Shard, op.KeyValues, op.Cache)
 
 	kv.logger.Printf(kv.gid, kv.me, "ShardKV.applyMigrateReceive, cfg num: %d, shard: %d, tag: %d, %s",
 		kv.config.Num, op.Shard, op.Tag, kv.shardInfoWithLock())
@@ -605,14 +496,18 @@ func (kv *ShardKV) applyMigrateFinish(op Op) Result {
 	resultMsg := Result{
 		Err: OK,
 	}
-	delete(kv.migrated, op.Shard)
-	delete(kv.migrateSendTag, op.Shard)
-	delete(kv.migrateFinishTag, op.Shard)
-	delete(kv.shardCache, op.Shard)
-	kv.shardCache[op.Shard] = make(map[int64]Result)
+	kv.shards.finishMigrate(op.Shard)
 	kv.logger.Printf(kv.gid, kv.me, "ShardKV.applyMigrateFinish, cfg num: %d, shard: %d, tag: %d, %s",
 		kv.config.Num, op.Shard, op.Tag, kv.shardInfoWithLock())
 	return resultMsg
+}
+
+func (kv *ShardKV) afterApply(result Result, op Op) {
+	if resultCh, ok := kv.pending[op.Tag]; ok {
+		resultCh <- result
+		close(resultCh)
+		delete(kv.pending, op.Tag)
+	}
 }
 
 func (kv *ShardKV) apply(applyMsg raft.ApplyMsg) {
@@ -634,7 +529,7 @@ func (kv *ShardKV) apply(applyMsg raft.ApplyMsg) {
 	switch op.Op {
 	case "Get", "Put", "Append":
 		shard := key2shard(op.Key)
-		result, handled = kv.shardCache[shard][op.Tag]
+		handled, result = kv.shards.isHandled(shard, op.Tag)
 	case "Config", "MigrateTrigger", "MigrateReceive", "MigrateFinish":
 		result, handled = kv.cache[op.Tag]
 	}
@@ -642,11 +537,7 @@ func (kv *ShardKV) apply(applyMsg raft.ApplyMsg) {
 
 	if handled {
 		kv.mu.Lock()
-		if resultCh, ok := kv.pending[op.Tag]; ok {
-			resultCh <- result
-			close(resultCh)
-			delete(kv.pending, op.Tag)
-		}
+		kv.afterApply(result, op)
 		kv.mu.Unlock()
 		return
 	}
@@ -673,20 +564,14 @@ func (kv *ShardKV) apply(applyMsg raft.ApplyMsg) {
 		panic(fmt.Sprintf("Unknown op: %s, me: %d", op.Op, kv.me))
 	}
 
-	if resultCh, ok := kv.pending[op.Tag]; ok {
-		lablog.Assert(resultCh != nil)
-		resultCh <- resultMsg
-		close(resultCh)
-		delete(kv.pending, op.Tag)
-		kv.logger.Printf(kv.gid, kv.me, "ShardKV.apply, result: %v, op: %s, tag: %d", resultMsg, op.Op, op.Tag)
-	}
+	kv.afterApply(resultMsg, op)
 
 	// 只对成功的请求进行cache.
 	if resultMsg.Err == OK {
 		switch op.Op {
 		case "Get", "Put", "Append":
 			shard := key2shard(op.Key)
-			kv.shardCache[shard][op.Tag] = resultMsg
+			kv.shards.handled(shard, op.Tag, resultMsg)
 		case "Config", "MigrateTrigger", "MigrateReceive", "MigrateFinish":
 			kv.cache[op.Tag] = resultMsg
 		}
@@ -851,18 +736,9 @@ func StartServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persister,
 	kv.applyCh = make(chan raft.ApplyMsg)
 	kv.rf = raft.Make(servers, me, persister, kv.applyCh)
 
-	kv.own = make(map[int]map[string]string)
-	kv.migrate = make(map[int]map[string]string)
-	kv.migrated = make(map[int]map[string]string)
-	kv.migrateTriggerTag = make(map[int]int64)
-	kv.migrateSendTag = make(map[int]int64)
-	kv.migrateFinishTag = make(map[int]int64)
+	kv.shards = newShards(shardmaster.NShards, kv.gid)
 	kv.migrateCh = make(chan bool)
 	kv.needSync = true
-	kv.shardCache = make(map[int]map[int64]Result)
-	for shard:=0; shard<shardmaster.NShards; shard++ {
-		kv.shardCache[shard] = make(map[int64]Result)
-	}
 
 	kv.prefers = make(map[int]int)
 	kv.pending = make(map[int64]chan Result)
