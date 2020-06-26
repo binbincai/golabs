@@ -178,7 +178,7 @@ func (ck *Clerk) PutAppend(key string, value string, op string) {
 					return
 				}
 				ck.logger.Printf(0, 0, "Clerk.PutAppend call fail, server: (%d, %d), reply: %v, shard: %d, tag: %d",
-					gid, server, reply, shard, gid)
+					gid, server, reply, shard, args.Tag)
 				if ok && reply.Err == ErrWrongGroup {
 					break
 				}

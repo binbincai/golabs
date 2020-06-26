@@ -629,17 +629,25 @@ func (kv *ShardKV) apply(applyMsg raft.ApplyMsg) {
 
 	// 检查是否已经处理过该请求.
 	kv.mu.Lock()
+	var result Result
 	var handled bool
 	switch op.Op {
 	case "Get", "Put", "Append":
 		shard := key2shard(op.Key)
-		_, handled = kv.shardCache[shard][op.Tag]
+		result, handled = kv.shardCache[shard][op.Tag]
 	case "Config", "MigrateTrigger", "MigrateReceive", "MigrateFinish":
-		_, handled = kv.cache[op.Tag]
+		result, handled = kv.cache[op.Tag]
 	}
 	kv.mu.Unlock()
 
 	if handled {
+		kv.mu.Lock()
+		if resultCh, ok := kv.pending[op.Tag]; ok {
+			resultCh <- result
+			close(resultCh)
+			delete(kv.pending, op.Tag)
+		}
+		kv.mu.Unlock()
 		return
 	}
 
@@ -672,7 +680,7 @@ func (kv *ShardKV) apply(applyMsg raft.ApplyMsg) {
 		delete(kv.pending, op.Tag)
 		kv.logger.Printf(kv.gid, kv.me, "ShardKV.apply, result: %v, op: %s, tag: %d", resultMsg, op.Op, op.Tag)
 	}
-	
+
 	// 只对成功的请求进行cache.
 	if resultMsg.Err == OK {
 		switch op.Op {
