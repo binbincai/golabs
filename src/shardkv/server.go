@@ -478,8 +478,11 @@ func (kv *ShardKV) applyMigrateTrigger(op Op) Result {
 
 func (kv *ShardKV) applyMigrateReceive(op Op) Result {
 	lablog.Assert(op.ConfigNum != 0)
-	if kv.config.Num > op.ConfigNum {
-		kv.needSync = true
+	if kv.config.Num >= op.ConfigNum {
+		// TODO: 确保config num为2的配置, 只被同步一次.
+		if kv.config.Num > 2 {
+			kv.needSync = true
+		}
 	}
 	resultMsg := Result{
 		Err: OK,

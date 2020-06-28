@@ -149,25 +149,27 @@ func (sm *ShardMaster) apply(applyMsg raft.ApplyMsg)  {
 func (sm *ShardMaster) request(op *Op) {
 	sm.logger.Printf(0, sm.me, "ShardMaster.request start")
 	defer sm.logger.Printf(0, sm.me, "ShardMaster.request end")
+
 	sm.mu.Lock()
-	if repl, ok := sm.cache[op.Tag]; ok {
-		op.ResultMsgCh <- repl
+	result, handled := sm.cache[op.Tag]
+	sm.mu.Unlock()
+	if handled {
+		op.ResultMsgCh <- result
 		close(op.ResultMsgCh)
 		return
 	}
-	delete(sm.cache, op.PrevTag)
-	sm.mu.Unlock()
 
-	_, _, isLeader := sm.rf.Start(op)
-	if !isLeader {
+	if !sm.rf.IsLeader() {
 		op.ResultMsgCh <- ResultMsg{
 			Err: "Wrong leader",
 		}
 		return
 	}
+	sm.rf.Start(op)
+
 	sm.mu.Lock()
-	defer sm.mu.Unlock()
 	sm.pending[op.Tag] = op.ResultMsgCh
+	sm.mu.Unlock()
 }
 
 func (sm *ShardMaster) background() {
@@ -286,7 +288,7 @@ func StartServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persister)
 	sm.pending = make(map[int64]chan ResultMsg)
 	sm.cache = make(map[int64]ResultMsg)
 
-	sm.logger = lablog.New(false, "shardmaster_server")
+	sm.logger = lablog.New(true, "shardmaster_server")
 	go sm.background()
 
 	sm.rf = raft.Make(servers, me, persister, sm.applyCh)
