@@ -166,6 +166,7 @@ OUT:
 		// 选举超时, 如果超时没有成功, 且没有其他节点变成主节点, 触发下一轮选举.
 		rf.mu.Lock()
 		rf.currentTerm++
+		rf.votedFor = -1
 		currentTerm := rf.currentTerm
 
 		// 默认给自己投一票.
@@ -207,7 +208,7 @@ OUT:
 					rf.logger.Printf(0, rf.me, "Stop elect, reason: detect higher term number, term: %d", currentTerm)
 					// 1. 选举失败.
 					select {
-					case <-rf.done:
+					case <-ctx.Done():
 					case rf.resetCh <- struct{}{}:
 					}
 					cancelElect()
@@ -230,7 +231,7 @@ OUT:
 				cancelElect()
 				rf.onElect()
 				select {
-				case <-rf.done:
+				case <-ctx.Done():
 				case rf.resetCh <- struct{}{}:
 				}
 				break OUT
@@ -238,7 +239,6 @@ OUT:
 			case <-t.C:
 				// 选举超时.
 				// 4. 无明确选举结果, 继续下一轮选举.
-				// 分别对应论文里面的三种结果.
 				rf.logger.Printf(0, rf.me, "Elect timeout, term: %d", currentTerm)
 				cancelElect()
 				break IN
