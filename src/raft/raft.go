@@ -19,9 +19,10 @@ package raft
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/binbincai/golabs/src/labgob"
+	"github.com/binbincai/golabs/src/lablog"
 	"github.com/binbincai/golabs/src/labrpc"
+	"math/rand"
 	"sync"
 )
 
@@ -63,61 +64,74 @@ type Raft struct {
 	nextIndex  []int // For each server, index of next log entry to send to that server
 	matchIndex []int // For each server, index of highest log entry known replicated to that server
 
-	role             RoleType
-	resetCh          chan byte
-	commitCh         chan byte
-	resetHeartbeatCh chan byte
-	applyCn          chan ApplyMsg
+	role               RoleType
+	resetCh            chan struct{}
+	commitCh           chan struct{}
+	resetHeartbeatCh   chan struct{}
+	triggerHeartbeatCh chan struct{}
+	applyCn            chan ApplyMsg
 
-	peerIndexToSuccessIndex map[int]int
-	batchCnt                int
+	peerSuccessIndex map[int]int
+	batchCnt         int
+
+	rnd    *rand.Rand
+	logger *lablog.Logger
+	done   chan struct{}
 }
 
-func (rf *Raft) String() string {
-	return fmt.Sprintf("id: %d, term: %d, snapshot: (%d,%d), commitIdx: %d, lastApplied:%d, log:(%d,%d:%d) ||| ", rf.me, rf.currentTerm, rf.snapshotIndex, rf.snapshotTerm, rf.commitIndex, rf.lastApplied, rf.firstLogIndex, rf.lastLogIndex, len(rf.log))
-}
+//func (rf *Raft) String() string {
+//	rf.mu.Lock()
+//	defer rf.mu.Unlock()
+//	return fmt.Sprintf("id: %d, term: %d, snapshot: (%d,%d), commitIdx: %d, lastApplied:%d, log:(%d,%d:%d) ||| ", rf.me, rf.currentTerm, rf.snapshotIndex, rf.snapshotTerm, rf.commitIndex, rf.lastApplied, rf.firstLogIndex, rf.lastLogIndex, len(rf.log))
+//}
 
 func (rf *Raft) isLeader() bool {
-	return rf.role == LEADER
-}
-
-func (rf *Raft) IsLeader() bool {
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
 	return rf.role == LEADER
 }
 
+func (rf *Raft) IsLeader() bool {
+	return rf.isLeader()
+}
+
 func (rf *Raft) beLeader() {
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
 	rf.role = LEADER
 }
 
 func (rf *Raft) isCandidate() bool {
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
 	return rf.role == CANDIDATE
 }
 
 func (rf *Raft) beCandidate() {
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
 	rf.role = CANDIDATE
 }
 
 func (rf *Raft) isFollower() bool {
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
 	return rf.role == FOLLOWER
 }
 
 func (rf *Raft) beFollower() {
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
 	rf.role = FOLLOWER
 }
 
 // GetState return currentTerm and whether this server
 // believes it is the leader.
 func (rf *Raft) GetState() (int, bool) {
-	var term int
-	var isleader bool
-	// Your code here (2A).
 	rf.mu.Lock()
-	term = rf.currentTerm
-	isleader = rf.isLeader()
+	term := rf.currentTerm
 	rf.mu.Unlock()
-	return term, isleader
+	return term, rf.isLeader()
 }
 
 //
@@ -126,6 +140,8 @@ func (rf *Raft) GetState() (int, bool) {
 // see paper's Figure 2 for a description of what should be persistent.
 //
 func (rf *Raft) persist() {
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
 	w := new(bytes.Buffer)
 	e := labgob.NewEncoder(w)
 	e.Encode(rf.currentTerm)
@@ -142,6 +158,8 @@ func (rf *Raft) persist() {
 // restore previously persisted state.
 //
 func (rf *Raft) readPersist(data []byte) {
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
 	if data == nil || len(data) < 1 { // bootstrap without any state?
 		return
 	}
@@ -155,7 +173,7 @@ func (rf *Raft) readPersist(data []byte) {
 	d.Decode(&rf.snapshotIndex)
 	d.Decode(&rf.snapshotTerm)
 	rf.lastApplied = rf.snapshotIndex
-	DPrintf("me: %s, readPersist", rf.String())
+	rf.logger.Printf(0, rf.me, "Raft.readPersist, index: %d, term: %d", rf.lastLogIndex, rf.currentTerm)
 }
 
 //
@@ -173,28 +191,27 @@ func (rf *Raft) readPersist(data []byte) {
 // the leader.
 //
 func (rf *Raft) Start(command interface{}) (int, int, bool) {
-	index := -1
-	term := -1
-	isLeader := false
+	if !rf.isLeader() {
+		return -1, -1, false
+	}
 
 	rf.mu.Lock()
-	term = rf.currentTerm
-	isLeader = rf.isLeader()
-	if isLeader {
-		log := Log{Term: term, Command: command}
-		rf.lastLogIndex++
-		index = rf.lastLogIndex
-		rf.log[index] = log
-
-		rf.peerIndexToSuccessIndex[rf.me] = index
-		rf.persist()
-		go rf.heartbeat(-1)
-
-		DPrintf("me: %s, start index: %d, command: %v", rf.String(), index, command)
-	}
+	rf.lastLogIndex++
+	index := rf.lastLogIndex
+	term := rf.currentTerm
+	log := Log{Term: term, Command: command}
+	rf.log[index] = log
+	rf.peerSuccessIndex[rf.me] = index
 	rf.mu.Unlock()
 
-	return index, term, isLeader
+	rf.persist()
+	select {
+	case rf.triggerHeartbeatCh <- struct{}{}:
+	case <-rf.done:
+	}
+
+	rf.logger.Printf(0, rf.me, "Start log, term: %d, index: %d, command: %v", term, index, command)
+	return index, term, true
 }
 
 //
@@ -205,6 +222,7 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 //
 func (rf *Raft) Kill() {
 	// Your code here, if desired.
+	close(rf.done)
 }
 
 //
@@ -241,12 +259,17 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.matchIndex = make([]int, peerNum)
 
 	rf.beFollower()
-	rf.resetCh = make(chan byte, 0)
-	rf.commitCh = make(chan byte, 0)
-	rf.resetHeartbeatCh = make(chan byte, 0)
+	rf.resetCh = make(chan struct{}, 0)
+	rf.commitCh = make(chan struct{}, 0)
+	rf.resetHeartbeatCh = make(chan struct{}, 0)
+	rf.triggerHeartbeatCh = make(chan struct{}, 0)
 	rf.applyCn = applyCh
 
 	rf.batchCnt = 256
+
+	rf.logger = lablog.New(true, "raft")
+	rf.rnd = rand.New(rand.NewSource(int64(0xabcd + rf.me)))
+	rf.done = make(chan struct{})
 
 	// initialize from state persisted before a crash
 	rf.readPersist(persister.ReadRaftState())
@@ -260,8 +283,11 @@ func Make(peers []*labrpc.ClientEnd, me int,
 }
 
 func (rf *Raft) reset(term int) {
+	rf.mu.Lock()
 	rf.currentTerm = term
 	rf.votedFor = -1
+	rf.mu.Unlock()
+
 	rf.beFollower()
 	rf.persist()
 }

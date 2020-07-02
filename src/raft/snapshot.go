@@ -44,13 +44,13 @@ type InstallSnapshotReply struct {
 }
 
 func (rf *Raft) newInstallSnapshotArgs() *InstallSnapshotArgs {
-	rf.mu.Lock()
-	defer rf.mu.Unlock()
-
 	args := &InstallSnapshotArgs{}
 	if !rf.isLeader() {
 		return args
 	}
+
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
 
 	args.Term = rf.currentTerm
 	args.LeaderID = rf.me
@@ -68,7 +68,7 @@ func (rf *Raft) InstallSnapshot(args *InstallSnapshotArgs, reply *InstallSnapsho
 	defer func() {
 		rf.mu.Unlock()
 		if reset {
-			rf.resetCh <- '0'
+			rf.resetCh <- struct{}{}
 		}
 	}()
 
@@ -78,7 +78,9 @@ func (rf *Raft) InstallSnapshot(args *InstallSnapshotArgs, reply *InstallSnapsho
 	}
 
 	if args.Term > rf.currentTerm {
+		rf.mu.Unlock()
 		rf.reset(args.Term)
+		rf.mu.Lock()
 		reset = true
 		reply.Term = rf.currentTerm
 	}
@@ -100,11 +102,13 @@ func (rf *Raft) InstallSnapshot(args *InstallSnapshotArgs, reply *InstallSnapsho
 
 	for i := rf.firstLogIndex; i <= rf.lastLogIndex; i++ {
 		delete(rf.log, i)
-		DPrintf("me: %s, delete log(snapshot), index: %d", rf.String(), i)
+		rf.logger.Printf(0, rf.me, "Raft.InstallSnapshot delete log, index: %d", i)
 	}
 	rf.firstLogIndex = rf.lastLogIndex + 1
 	rf.lastLogIndex = 0
+	rf.mu.Unlock()
 	rf.persist()
+	rf.mu.Lock()
 
 	amsg := ApplyMsg{
 		CommandValid: false,
@@ -115,8 +119,10 @@ func (rf *Raft) InstallSnapshot(args *InstallSnapshotArgs, reply *InstallSnapsho
 	rf.snapshotTerm = snapshotTerm
 	rf.lastLogIndex = snapshotIndex
 	rf.lastApplied = snapshotIndex
+	rf.mu.Unlock()
 	rf.persist()
-	DPrintf("me: %s, InstallSnapshot", rf.String())
+	rf.mu.Lock()
+	rf.logger.Printf(0, rf.me, "Raft.InstallSnapshot")
 }
 
 func (rf *Raft) sendInstallSnapshot(server int, args *InstallSnapshotArgs, reply *InstallSnapshotReply) bool {
@@ -137,7 +143,7 @@ func (rf *Raft) sendSnapshot(peerIdx int) {
 	defer func() {
 		rf.mu.Unlock()
 		if reset {
-			rf.resetCh <- '0'
+			rf.resetCh <- struct{}{}
 		}
 	}()
 
@@ -145,7 +151,9 @@ func (rf *Raft) sendSnapshot(peerIdx int) {
 		return
 	}
 	if reply.Term > rf.currentTerm {
+		rf.mu.Unlock()
 		rf.reset(reply.Term)
+		rf.mu.Lock()
 		reset = true
 		return
 	}

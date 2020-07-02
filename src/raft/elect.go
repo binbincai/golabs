@@ -1,7 +1,8 @@
 package raft
 
 import (
-	"math/rand"
+	"context"
+	"github.com/binbincai/golabs/src/labrpc"
 	"time"
 )
 
@@ -23,17 +24,12 @@ type RequestVoteReply struct {
 	// Your data here (2A).
 	Term        int
 	VoteGranted bool
+	PeerID      int
 }
 
 func (rf *Raft) newRequestVoteArgs() *RequestVoteArgs {
 	rf.mu.Lock()
-	defer func() {
-		rf.mu.Unlock()
-	}()
-
-	rf.currentTerm++
-	rf.votedFor = rf.me
-	rf.beCandidate()
+	defer rf.mu.Unlock()
 
 	req := &RequestVoteArgs{}
 	req.Term = rf.currentTerm
@@ -46,8 +42,6 @@ func (rf *Raft) newRequestVoteArgs() *RequestVoteArgs {
 		req.LastLogTerm = rf.getLogTerm(index)
 	}
 
-	DPrintf("me: %s, new vote, req: %v", rf.String(), req)
-	rf.persist()
 	return req
 }
 
@@ -61,7 +55,10 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	defer func() {
 		rf.mu.Unlock()
 		if reset {
-			rf.resetCh <- '0'
+			select {
+			case <-rf.done:
+			case rf.resetCh <- struct{}{}:
+			}
 		}
 	}()
 
@@ -73,20 +70,22 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	}
 
 	if args.Term > rf.currentTerm {
+		rf.mu.Unlock()
 		rf.reset(args.Term)
+		rf.mu.Lock()
 		reset = true
 		reply.Term = rf.currentTerm
 	}
 
-	if rf.votedFor != -1 {
-		if args.CandidateID != rf.votedFor {
-			return
-		}
+	if rf.votedFor != -1 && args.CandidateID != rf.votedFor {
+		return
 	}
 
 	if rf.lastLogIndex > 0 {
 		index := rf.lastLogIndex
+		rf.mu.Unlock()
 		term := rf.getLogTerm(index)
+		rf.mu.Lock()
 		if args.LastLogTerm < term {
 			return
 		}
@@ -99,137 +98,207 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	reply.VoteGranted = true
 	reset = true
 
+	rf.mu.Unlock()
 	rf.persist()
+	rf.mu.Lock()
 }
 
-//
-// example code to send a RequestVote RPC to a server.
-// server is the index of the target server in rf.peers[].
-// expects RPC arguments in args.
-// fills in *reply with RPC reply, so caller should
-// pass &reply.
-// the types of the args and reply passed to Call() must be
-// the same as the types of the arguments declared in the
-// handler function (including whether they are pointers).
-//
-// The labrpc package simulates a lossy network, in which servers
-// may be unreachable, and in which requests and replies may be lost.
-// Call() sends a request and waits for a reply. If a reply arrives
-// within a timeout interval, Call() returns true; otherwise
-// Call() returns false. Thus Call() may not return for a while.
-// A false return can be caused by a dead server, a live server that
-// can't be reached, a lost request, or a lost reply.
-//
-// Call() is guaranteed to return (perhaps after a delay) *except* if the
-// handler function on the server side does not return.  Thus there
-// is no need to implement your own timeouts around Call().
-//
-// look at the comments in ../labrpc/labrpc.go for more details.
-//
-// if you're having trouble getting RPC to work, check that you've
-// capitalized all field names in structs passed over RPC, and
-// that the caller passes the address of the reply struct with &, not
-// the struct itself.
-//
 func (rf *Raft) sendRequestVote(server int, args *RequestVoteArgs, reply *RequestVoteReply) bool {
 	ok := rf.peers[server].Call("Raft.RequestVote", args, reply)
 	return ok
 }
 
-func (rf *Raft) onEelect() {
+func (rf *Raft) onElect() {
 	rf.beLeader()
 
-	rf.peerIndexToSuccessIndex = make(map[int]int)
-
+	rf.mu.Lock()
+	rf.peerSuccessIndex = make(map[int]int)
 	for peerIdx := range rf.peers {
 		rf.nextIndex[peerIdx] = rf.lastLogIndex + 1
 		rf.matchIndex[peerIdx] = 0
 	}
+	rf.mu.Unlock()
 
-	DPrintf("me: %s, become leader", rf.String())
-	go rf.heartbeat(-1)
+	select {
+	case <-rf.done:
+	case rf.triggerHeartbeatCh <- struct{}{}:
+	}
 }
 
-func (rf *Raft) elect() {
-	req := rf.newRequestVoteArgs()
+func (rf *Raft) sendRoteReq(ctx context.Context, peerID int, peer *labrpc.ClientEnd, replCh chan *RequestVoteReply) {
+	args := rf.newRequestVoteArgs()
+	repl := &RequestVoteReply{}
 
-	votedTag := make(map[int]bool)
-	voted := 1
-	onReply := func(peerIdx int, reply *RequestVoteReply) {
-		reset := false
-		rf.mu.Lock()
-		defer func() {
-			rf.mu.Unlock()
-			if reset {
-				rf.resetCh <- '0'
+	done := make(chan bool)
+	go func() {
+		ok := peer.Call("Raft.RequestVote", args, repl)
+		// 1. 防止卡主done<-ok.
+		// 2. 保证正常关闭done.
+		select {
+		case <-ctx.Done():
+		case done <- ok:
+		}
+		close(done)
+	}()
+
+	select {
+	case <-ctx.Done():
+		// 当前轮投票结束.
+	case ok := <-done:
+		// RPC请求返回.
+		if ok {
+			repl.PeerID = peerID
+			// 防止卡主replCh<-repl.
+			select {
+			case <-ctx.Done():
+			case replCh <- repl:
 			}
-		}()
-
-		if reply.Term < rf.currentTerm {
-			return
 		}
+	}
+}
 
-		if reply.Term > rf.currentTerm {
-			rf.reset(reply.Term)
-			reset = true
-			return
+func (rf *Raft) elect(ctx context.Context) {
+	rf.logger.Printf(0, rf.me, "Begin elect")
+	rf.beCandidate()
+
+OUT:
+	for {
+		// 选举超时, 如果超时没有成功, 且没有其他节点变成主节点, 触发下一轮选举.
+		rf.mu.Lock()
+		rf.currentTerm++
+		currentTerm := rf.currentTerm
+
+		// 默认给自己投一票.
+		rf.votedFor = rf.me
+		counter := newElectCounter(currentTerm, len(rf.peers))
+		counter.approve(currentTerm, rf.me)
+
+		// 配置选举定时器.
+		off := time.Duration(rf.rnd.Int()%600) * time.Millisecond
+		t := time.NewTimer(time.Second + off)
+
+		// 表示这一轮选举.
+		ctxElect, cancelElect := context.WithCancel(context.Background())
+
+		rf.logger.Printf(0, rf.me, "Start new elect round, term: %d", currentTerm)
+		// 发起投票请求.
+		replCh := make(chan *RequestVoteReply)
+		for i, peer := range rf.peers {
+			if i == rf.me {
+				continue
+			}
+			go rf.sendRoteReq(ctxElect, i, peer, replCh)
 		}
+		rf.mu.Unlock()
 
-		if !rf.isCandidate() {
-			return
-		}
+		rf.persist()
 
-		if !reply.VoteGranted {
-			return
-		}
+	IN:
+		for {
+			select {
+			case repl := <-replCh:
+				t.Stop()
+				rf.logger.Printf(0, rf.me, "Receive vote repl from %d, term: %d, repl: %v", repl.PeerID, currentTerm, *repl)
+				if repl.Term < currentTerm {
+					break // 中断当前select, 而不是外侧的for循环.
+				}
 
-		if votedTag[peerIdx] {
-			return
-		}
-		votedTag[peerIdx] = true
+				if repl.Term > currentTerm {
+					rf.logger.Printf(0, rf.me, "Stop elect, reason: detect higher term number, term: %d", currentTerm)
+					// 1. 选举失败.
+					select {
+					case <-rf.done:
+					case rf.resetCh <- struct{}{}:
+					}
+					cancelElect()
+					rf.reset(repl.Term)
+					break OUT
+				}
 
-		DPrintf("me: %s, voted by: %d", rf.String(), peerIdx)
+				if !repl.VoteGranted {
+					rf.logger.Printf(0, rf.me, "Vote rejected by peer %d, term: %d", repl.PeerID, currentTerm)
+					break
+				}
 
-		voted++
-		if voted > len(rf.peers)/2 {
-			rf.onEelect()
-			reset = true
+				rf.logger.Printf(0, rf.me, "Vote approved by peer %d, term: %d", repl.PeerID, currentTerm)
+				if !counter.approve(repl.Term, repl.PeerID) {
+					break
+				}
+
+				// 2. 选举成功.
+				rf.logger.Printf(0, rf.me, "Stop elect, reason: success, term: %d", currentTerm)
+				cancelElect()
+				rf.onElect()
+				select {
+				case <-rf.done:
+				case rf.resetCh <- struct{}{}:
+				}
+				break OUT
+
+			case <-t.C:
+				// 选举超时.
+				// 4. 无明确选举结果, 继续下一轮选举.
+				// 分别对应论文里面的三种结果.
+				rf.logger.Printf(0, rf.me, "Elect timeout, term: %d", currentTerm)
+				cancelElect()
+				break IN
+
+			case <-ctx.Done():
+				// 选举被迫中断.
+				rf.logger.Printf(0, rf.me, "Stop elect, reason: server cancel elect process, term: %d", currentTerm)
+				cancelElect()
+				t.Stop()
+				break OUT
+			}
 		}
 	}
 
-	sendReq := func(peerIdx int) {
-		reply := &RequestVoteReply{}
-		succ := rf.sendRequestVote(peerIdx, req, reply)
-		if !succ {
-			return
-		}
-		onReply(peerIdx, reply)
-	}
-
-	rf.mu.Lock()
-	for peerIdx := range rf.peers {
-		if peerIdx == rf.me {
-			continue
-		}
-		go sendReq(peerIdx)
-	}
-	rf.mu.Unlock()
+	rf.logger.Printf(0, rf.me, "Exit elect")
 }
 
 func (rf *Raft) backgroundElect() {
+	// 保证同一个时刻, 仅有一个有效的选举流程在进行.
+	var ctx context.Context
+	var cancel context.CancelFunc
 	for {
-		timeout := time.Duration(rand.Intn(150)+150) * time.Second / 1000
-		timer := time.NewTimer(timeout)
+		// 心跳超时, 如果超时没有收到心跳, 则升级为候选人, 发起新的一轮选举.
+		rf.mu.Lock()
+		off := time.Duration(rf.rnd.Int()%600) * time.Millisecond
+		t := time.NewTimer(time.Second + off)
+		rf.mu.Unlock()
 
 		select {
 		case <-rf.resetCh:
-			timer.Stop()
-		case <-timer.C:
-			rf.mu.Lock()
-			if !rf.isLeader() {
-				go rf.elect()
+			t.Stop()
+			// 下列情况会触发:
+			// 1. 收到主节点的心跳/投票请求.
+			// 2. 收到更高节点的心跳/投票请求.
+			// 3. 当前节点选主成功.
+			if ctx != nil {
+				cancel()
+				ctx = nil
+				cancel = nil
 			}
-			rf.mu.Unlock()
+
+		case <-t.C:
+			// 超时没有收到请求.
+			if !rf.isLeader() {
+				// 如果没有进行中的选主流程, 则启动新的选主流程.
+				if ctx == nil {
+					ctx, cancel = context.WithCancel(context.Background())
+					go rf.elect(ctx)
+				}
+			}
+
+		case <-rf.done:
+			t.Stop()
+			// 服务退出时, 需要终止正在进行中的选主流程.
+			if ctx != nil {
+				cancel()
+				ctx = nil
+				cancel = nil
+			}
+			return
 		}
 	}
 }

@@ -1,6 +1,9 @@
 package raft
 
-import "time"
+import (
+	"github.com/binbincai/golabs/src/lablog"
+	"time"
+)
 
 // Log is refer to replicate log
 type Log struct {
@@ -45,6 +48,8 @@ type AppendEntriesReply struct {
 }
 
 func (rf *Raft) getLogTerm(index int) int {
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
 	if index == 0 || index < rf.snapshotIndex {
 		return 0
 	}
@@ -55,15 +60,15 @@ func (rf *Raft) getLogTerm(index int) int {
 }
 
 func (rf *Raft) newAppendEntriesArgs(peerIdx int) *AppendEntriesArgs {
-	rf.mu.Lock()
-	defer func() {
-		rf.mu.Unlock()
-	}()
-
 	req := &AppendEntriesArgs{}
 	if !rf.isLeader() {
 		return req
 	}
+
+	rf.mu.Lock()
+	defer func() {
+		rf.mu.Unlock()
+	}()
 
 	req.Term = rf.currentTerm
 	req.LeaderID = rf.me
@@ -83,7 +88,9 @@ func (rf *Raft) newAppendEntriesArgs(peerIdx int) *AppendEntriesArgs {
 		prevIndex := index - 1
 		if prevIndex > 0 {
 			req.PrevLogIndex = prevIndex
+			rf.mu.Unlock()
 			req.PrevLogTerm = rf.getLogTerm(prevIndex)
+			rf.mu.Lock()
 		}
 	}
 
@@ -98,10 +105,10 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	defer func() {
 		rf.mu.Unlock()
 		if reset {
-			rf.resetCh <- '0'
+			rf.resetCh <- struct{}{}
 		}
 		if commit {
-			rf.commitCh <- '0'
+			rf.commitCh <- struct{}{}
 		}
 	}()
 
@@ -112,7 +119,9 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	}
 
 	if args.Term > rf.currentTerm {
+		rf.mu.Unlock()
 		rf.reset(args.Term)
+		rf.mu.Lock()
 		reply.Term = rf.currentTerm
 		reset = true
 	}
@@ -156,10 +165,13 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 		}
 
 		if persist {
+			rf.mu.Unlock()
 			rf.persist()
+			rf.mu.Lock()
 		}
 
-		DPrintf("me: %s, append logs, from: %d, cnt: %d", rf.String(), args.LeaderID, appendCnt)
+		rf.logger.Printf(0, rf.me, "Raft.AppendEntries append logs from %d, cnt: %d",
+			args.LeaderID, appendCnt)
 	}
 
 	index := args.PrevLogIndex + len(args.Entries)
@@ -180,16 +192,20 @@ func (rf *Raft) sendAppendEntries(server int, args *AppendEntriesArgs, reply *Ap
 
 func (rf *Raft) heartbeat(concretePeerIdx int) {
 	onReply := func(peerIdx int, req *AppendEntriesArgs, reply *AppendEntriesReply) {
+		if !rf.isLeader() {
+			return
+		}
+
 		reset := false
 		commit := false
 		rf.mu.Lock()
 		defer func() {
 			rf.mu.Unlock()
 			if reset {
-				rf.resetCh <- '0'
+				rf.resetCh <- struct{}{}
 			}
 			if commit {
-				rf.commitCh <- '0'
+				rf.commitCh <- struct{}{}
 			}
 		}()
 
@@ -198,12 +214,10 @@ func (rf *Raft) heartbeat(concretePeerIdx int) {
 		}
 
 		if reply.Term > rf.currentTerm {
+			rf.mu.Unlock()
 			rf.reset(reply.Term)
+			rf.mu.Lock()
 			reset = true
-			return
-		}
-
-		if !rf.isLeader() {
 			return
 		}
 
@@ -211,19 +225,22 @@ func (rf *Raft) heartbeat(concretePeerIdx int) {
 			index := req.PrevLogIndex + len(req.Entries)
 			rf.nextIndex[peerIdx] = max(rf.nextIndex[peerIdx], index+1)
 			rf.matchIndex[peerIdx] = max(rf.matchIndex[peerIdx], index)
-			rf.peerIndexToSuccessIndex[peerIdx] = max(rf.peerIndexToSuccessIndex[peerIdx], index)
+			rf.peerSuccessIndex[peerIdx] = max(rf.peerSuccessIndex[peerIdx], index)
 			if len(req.Entries) > 0 {
-				DPrintf("me: %s, reply success, from: %d, succ idx: %d", rf.String(), peerIdx, index)
+				rf.logger.Printf(0, rf.me, "Raft.heartbeat, reply success from %d, success index: %d",
+					peerIdx, index)
 			}
-			if rf.forwordCommitIndex() {
+			rf.mu.Unlock()
+			if rf.forwardCommitIndex() {
 				commit = true
-				DPrintf("me: %s, commit index update, index: %d", rf.String(), rf.commitIndex)
+				rf.logger.Printf(0, rf.me, "Raft.heartbeat, commit index update, commit index: %d", rf.commitIndex)
 			}
+			rf.mu.Lock()
 
 			if rf.snapshotIndex >= rf.nextIndex[peerIdx] {
 				go rf.sendSnapshot(peerIdx)
 			} else if rf.lastLogIndex-rf.matchIndex[peerIdx] > rf.batchCnt {
-				DPrintf("me: %s, concrete heartbeat to peer: %d", rf.String(), peerIdx)
+				rf.logger.Printf(0, rf.me, "Raft.heartbeat concrete heartbeat to peer %d", peerIdx)
 				go rf.heartbeat(peerIdx)
 			}
 		} else {
@@ -234,8 +251,8 @@ func (rf *Raft) heartbeat(concretePeerIdx int) {
 	sendReq := func(peerIdx int) {
 		req := rf.newAppendEntriesArgs(peerIdx)
 		reply := &AppendEntriesReply{}
-		succ := rf.sendAppendEntries(peerIdx, req, reply)
-		if succ {
+		success := rf.sendAppendEntries(peerIdx, req, reply)
+		if success {
 			onReply(peerIdx, req, reply)
 		}
 	}
@@ -260,53 +277,59 @@ func (rf *Raft) apply() {
 	}()
 	for rf.lastApplied < rf.commitIndex {
 		index := rf.lastApplied + 1
-		applyMsg := ApplyMsg{
+		rf.mu.Unlock()
+		term := rf.getLogTerm(index)
+		rf.mu.Lock()
+		msg := ApplyMsg{
 			CommandValid: true,
 			Command:      rf.log[index].Command,
 			CommandIndex: index,
-			CommandTerm:  rf.getLogTerm(index),
+			CommandTerm:  term,
 		}
 
 		if _, ok := rf.log[index]; ok {
-			DPrintf("me: %s, apply msg: %v", rf.String(), applyMsg)
+			rf.logger.Printf(0, rf.me, "Raft.apply apply msg, term: %d, index: %d, msg: %v",
+				term, index, msg)
 		} else {
-			DPrintf("me: %s, apply empty msg, index: %d", rf.String(), index)
+			rf.logger.Printf(0, rf.me, "Raft.apply apply empty msg, term: %d, index: %d, msg: %v",
+				term, index, msg)
+			lablog.Assert(false)
 		}
 
-		rf.applyCn <- applyMsg
+		rf.applyCn <- msg
 
 		rf.lastApplied++
+		rf.mu.Unlock()
 		rf.persist()
+		rf.mu.Lock()
 	}
 }
 
 func (rf *Raft) backgroundApply() {
 	for {
-		timeout := 10 * time.Second / 1000
-		timer := time.NewTimer(timeout)
+		t := time.NewTimer(10 * time.Millisecond)
 
 		select {
-		case <-timer.C:
+		case <-t.C:
 			go rf.apply()
 		case <-rf.commitCh:
-			timer.Stop()
+			t.Stop()
 			go rf.apply()
 
-			rf.mu.Lock()
-			isLeader := rf.isLeader()
-			if isLeader {
+			if rf.isLeader() {
 				go rf.heartbeat(-1)
 			}
-			rf.mu.Unlock()
 
-			if isLeader {
-				rf.resetHeartbeatCh <- '0'
+			if rf.isLeader() {
+				rf.resetHeartbeatCh <- struct{}{}
 			}
 		}
 	}
 }
 
-func (rf *Raft) forwordCommitIndex() bool {
+func (rf *Raft) forwardCommitIndex() bool {
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
 	commitIndex := rf.commitIndex
 	nextCommitIndex := max(commitIndex, rf.lastApplied) + 1
 	for nextCommitIndex <= rf.lastLogIndex {
@@ -316,7 +339,7 @@ func (rf *Raft) forwordCommitIndex() bool {
 		}
 		successCnt := 0
 		for peerIdx := range rf.peers {
-			if rf.peerIndexToSuccessIndex[peerIdx] >= nextCommitIndex {
+			if rf.peerSuccessIndex[peerIdx] >= nextCommitIndex {
 				successCnt++
 			}
 		}
@@ -331,23 +354,26 @@ func (rf *Raft) forwordCommitIndex() bool {
 
 func (rf *Raft) backgroundHeartbeat() {
 	for {
-		timeout := 50 * time.Second / 1000
-		timer := time.NewTimer(timeout)
+		t := time.NewTimer(50 * time.Millisecond)
 
 		select {
 		case <-rf.resetHeartbeatCh:
-			timer.Stop()
-		case <-timer.C:
-			rf.mu.Lock()
-			if rf.isLeader() {
+			t.Stop()
+			if rf.IsLeader() {
 				go rf.heartbeat(-1)
 			}
-			rf.mu.Unlock()
+		case <-t.C:
+			if rf.IsLeader() {
+				go rf.heartbeat(-1)
+			}
+		case <-rf.done:
+			t.Stop()
+			return
 		}
 	}
 }
 
-func (rf *Raft) trimLog() {
+func (rf *Raft) trim() {
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
 	change := false
@@ -355,21 +381,25 @@ func (rf *Raft) trimLog() {
 		delete(rf.log, i)
 		rf.firstLogIndex = i + 1
 		change = true
-		DPrintf("me: %s, delete log, index: %d", rf.String(), i)
+		rf.logger.Printf(0, rf.me, "Raft.trim delete log, index: %d", i)
 	}
 	if change {
+		rf.mu.Unlock()
 		rf.persist()
-		DPrintf("me: %s, Trim log, first log index: %d, snapshot index: %d", rf.String(), rf.firstLogIndex, rf.snapshotIndex)
+		rf.mu.Lock()
+		rf.logger.Printf(0, rf.me, "Raft.trim trim log, first index: %d, snapshot index: %d",
+			rf.firstLogIndex, rf.snapshotIndex)
 	}
 }
 
 func (rf *Raft) backgroundTrimLog() {
 	for {
-		timeout := 5 * time.Second / 1000
-		timer := time.NewTimer(timeout)
+		timer := time.NewTimer(5 * time.Millisecond)
 		select {
 		case <-timer.C:
-			rf.trimLog()
+			rf.trim()
+		case <-rf.done:
+			return
 		}
 	}
 }
