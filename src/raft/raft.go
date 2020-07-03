@@ -19,11 +19,14 @@ package raft
 
 import (
 	"bytes"
+	"context"
 	"github.com/binbincai/golabs/src/labgob"
 	"github.com/binbincai/golabs/src/lablog"
 	"github.com/binbincai/golabs/src/labrpc"
+	"go.uber.org/atomic"
 	"math/rand"
 	"sync"
+	"time"
 )
 
 //
@@ -64,15 +67,14 @@ type Raft struct {
 	nextIndex  []int // For each server, index of next log entry to send to that server
 	matchIndex []int // For each server, index of highest log entry known replicated to that server
 
-	role               RoleType
-	resetCh            chan struct{}
-	commitCh           chan struct{}
-	resetHeartbeatCh   chan struct{}
-	triggerHeartbeatCh chan struct{}
-	applyCn            chan ApplyMsg
+	role        RoleType
+	resetCh     chan struct{}
+	commitCh    chan struct{}
+	heartbeatCh chan struct{}
+	applyCn     chan ApplyMsg
 
-	peerSuccessIndex map[int]int
-	batchCnt         int
+	//peerSuccessIndex map[int]int
+	batchCnt int
 
 	rnd    *rand.Rand
 	logger *lablog.Logger
@@ -95,10 +97,12 @@ func (rf *Raft) IsLeader() bool {
 	return rf.isLeader()
 }
 
-func (rf *Raft) beLeader() {
+func (rf *Raft) beLeader(ctx context.Context) {
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
-	rf.role = LEADER
+	if ctx.Err() == nil {
+		rf.role = LEADER
+	}
 }
 
 func (rf *Raft) isCandidate() bool {
@@ -201,12 +205,12 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	term := rf.currentTerm
 	log := Log{Term: term, Command: command}
 	rf.log[index] = log
-	rf.peerSuccessIndex[rf.me] = index
+	rf.matchIndex[rf.me] = index
 	rf.mu.Unlock()
 
 	rf.persist()
 	select {
-	case rf.triggerHeartbeatCh <- struct{}{}:
+	case rf.heartbeatCh <- struct{}{}:
 	case <-rf.done:
 	}
 
@@ -223,6 +227,7 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 func (rf *Raft) Kill() {
 	// Your code here, if desired.
 	close(rf.done)
+	rf.logger.Printf(0, rf.me, "Raft.Kill")
 }
 
 //
@@ -261,8 +266,7 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.beFollower()
 	rf.resetCh = make(chan struct{}, 0)
 	rf.commitCh = make(chan struct{}, 0)
-	rf.resetHeartbeatCh = make(chan struct{}, 0)
-	rf.triggerHeartbeatCh = make(chan struct{}, 0)
+	rf.heartbeatCh = make(chan struct{}, 0)
 	rf.applyCn = applyCh
 
 	rf.batchCnt = 256
@@ -279,6 +283,7 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	go rf.backgroundApply()
 	go rf.backgroundTrimLog()
 
+	rf.logger.Printf(0, rf.me, "Raft start")
 	return rf
 }
 
@@ -290,4 +295,729 @@ func (rf *Raft) reset(term int) {
 
 	rf.beFollower()
 	rf.persist()
+}
+
+//
+// RequestVoteArgs is RequestVote RPC arguments structure.
+//
+type RequestVoteArgs struct {
+	// Your data here (2A, 2B).
+	Term         int
+	CandidateID  int
+	LastLogIndex int
+	LastLogTerm  int
+}
+
+//
+// RequestVoteReply is RequestVote RPC reply structure.
+//
+type RequestVoteReply struct {
+	// Your data here (2A).
+	Term        int
+	VoteGranted bool
+	PeerID      int
+}
+
+func (rf *Raft) newRequestVoteArgs() *RequestVoteArgs {
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
+
+	req := &RequestVoteArgs{}
+	req.Term = rf.currentTerm
+	req.CandidateID = rf.me
+	req.LastLogIndex = 0
+	req.LastLogTerm = 0
+	if rf.lastLogIndex > 0 {
+		index := rf.lastLogIndex
+		req.LastLogIndex = index
+		rf.mu.Unlock()
+		req.LastLogTerm = rf.getLogTerm(index)
+		rf.mu.Lock()
+	}
+
+	return req
+}
+
+//
+// RequestVote RPC handler.
+//
+func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
+	// Your code here (2A, 2B).
+	reset := false
+	rf.mu.Lock()
+	defer func() {
+		rf.mu.Unlock()
+		if reset {
+			select {
+			case <-rf.done:
+			case rf.resetCh <- struct{}{}:
+			}
+		}
+	}()
+
+	reply.Term = rf.currentTerm
+	reply.VoteGranted = false
+
+	if args.Term < rf.currentTerm {
+		return
+	}
+
+	if args.Term > rf.currentTerm {
+		rf.mu.Unlock()
+		rf.reset(args.Term)
+		rf.mu.Lock()
+		reset = true
+		reply.Term = rf.currentTerm
+	}
+
+	if rf.votedFor != -1 && args.CandidateID != rf.votedFor {
+		return
+	}
+
+	if rf.lastLogIndex > 0 {
+		index := rf.lastLogIndex
+		rf.mu.Unlock()
+		term := rf.getLogTerm(index)
+		rf.mu.Lock()
+		if args.LastLogTerm < term {
+			return
+		}
+		if args.LastLogTerm == term && args.LastLogIndex < index {
+			return
+		}
+	}
+
+	rf.votedFor = args.CandidateID
+	reply.VoteGranted = true
+	reset = true
+
+	rf.mu.Unlock()
+	rf.persist()
+	rf.mu.Lock()
+}
+
+func (rf *Raft) onElect(ctx context.Context) {
+	rf.mu.Lock()
+	for peerIdx := range rf.peers {
+		rf.nextIndex[peerIdx] = rf.lastLogIndex + 1
+		rf.matchIndex[peerIdx] = 0
+	}
+	rf.mu.Unlock()
+
+	rf.beLeader(ctx)
+
+	select {
+	case <-ctx.Done():
+	case rf.heartbeatCh <- struct{}{}:
+	}
+}
+
+func (rf *Raft) sendRoteReq(ctx context.Context, peerID int, peer *labrpc.ClientEnd, replCh chan *RequestVoteReply) {
+	args := rf.newRequestVoteArgs()
+	repl := &RequestVoteReply{}
+
+	done := make(chan bool)
+	go func() {
+		ok := peer.Call("Raft.RequestVote", args, repl)
+		// 1. 防止卡主done<-ok.
+		// 2. 保证正常关闭done.
+		select {
+		case <-ctx.Done():
+		case done <- ok:
+		}
+		close(done)
+	}()
+
+	select {
+	case <-ctx.Done():
+		// 当前轮投票结束.
+	case ok := <-done:
+		// RPC请求返回.
+		if ok {
+			repl.PeerID = peerID
+			// 防止卡主replCh<-repl.
+			select {
+			case <-ctx.Done():
+			case replCh <- repl:
+			}
+		}
+	}
+}
+
+func (rf *Raft) elect(ctx context.Context) {
+	rf.logger.Printf(0, rf.me, "Begin elect")
+	rf.beCandidate()
+
+OUT:
+	for {
+		rf.mu.Lock()
+		rf.currentTerm++
+		rf.votedFor = -1
+		currentTerm := rf.currentTerm
+
+		// 默认给自己投一票.
+		rf.votedFor = rf.me
+		counter := newElectCounter(currentTerm, len(rf.peers))
+		counter.approve(currentTerm, rf.me)
+
+		// 配置选举定时器.
+		off := time.Duration(rf.rnd.Int()%600) * time.Millisecond
+		t := time.NewTimer(time.Second + off)
+
+		// 表示这一轮选举.
+		ctxElect, cancelElect := context.WithCancel(context.Background())
+
+		rf.logger.Printf(0, rf.me, "Start new elect round, term: %d", currentTerm)
+		// 发起投票请求.
+		replCh := make(chan *RequestVoteReply)
+		for i, peer := range rf.peers {
+			if i == rf.me {
+				continue
+			}
+			go rf.sendRoteReq(ctxElect, i, peer, replCh)
+		}
+		rf.mu.Unlock()
+
+		rf.persist()
+
+	IN:
+		for {
+			select {
+			case repl := <-replCh:
+				t.Stop()
+				rf.logger.Printf(0, rf.me, "Receive vote repl from %d, term: %d, repl: %v", repl.PeerID, currentTerm, *repl)
+				if repl.Term < currentTerm {
+					break // 中断当前select, 而不是外侧的for循环.
+				}
+
+				if repl.Term > currentTerm {
+					rf.logger.Printf(0, rf.me, "Stop elect, reason: detect higher term number, term: %d", currentTerm)
+					// 1. 选举失败.
+					select {
+					case <-ctx.Done():
+					case rf.resetCh <- struct{}{}:
+					}
+					cancelElect()
+					rf.reset(repl.Term)
+					break OUT
+				}
+
+				if !repl.VoteGranted {
+					rf.logger.Printf(0, rf.me, "Vote rejected by peer %d, term: %d", repl.PeerID, currentTerm)
+					break
+				}
+
+				rf.logger.Printf(0, rf.me, "Vote approved by peer %d, term: %d", repl.PeerID, currentTerm)
+				if !counter.approve(repl.Term, repl.PeerID) {
+					break
+				}
+
+				// 2. 选举成功.
+				rf.logger.Printf(0, rf.me, "Stop elect, reason: success, term: %d", currentTerm)
+				cancelElect()
+				rf.onElect(ctx)
+				select {
+				case <-ctx.Done():
+				case rf.resetCh <- struct{}{}:
+				}
+				break OUT
+
+			case <-t.C:
+				// 选举超时.
+				// 4. 无明确选举结果, 继续下一轮选举.
+				rf.logger.Printf(0, rf.me, "Elect timeout, term: %d", currentTerm)
+				cancelElect()
+				break IN
+
+			case <-ctx.Done():
+				// 选举被迫中断.
+				rf.logger.Printf(0, rf.me, "Stop elect, reason: server cancel elect process, term: %d", currentTerm)
+				cancelElect()
+				t.Stop()
+				break OUT
+			}
+		}
+	}
+
+	rf.logger.Printf(0, rf.me, "Exit elect")
+}
+
+func (rf *Raft) backgroundElect() {
+	// 保证同一个时刻, 仅有一个有效的选举流程在进行.
+	var ctx context.Context
+	var cancel context.CancelFunc
+	for {
+		// 心跳超时, 如果超时没有收到心跳, 则升级为候选人, 发起新的一轮选举.
+		rf.mu.Lock()
+		off := time.Duration(rf.rnd.Int()%600) * time.Millisecond
+		t := time.NewTimer(time.Second + off)
+		rf.mu.Unlock()
+
+		select {
+		case <-rf.resetCh:
+			t.Stop()
+			// 下列情况会触发:
+			// 1. 收到主节点的心跳/投票请求.
+			// 2. 收到更高节点的心跳/投票请求.
+			// 3. 当前节点选主成功.
+			if ctx != nil {
+				cancel()
+				ctx = nil
+				cancel = nil
+			}
+
+		case <-t.C:
+			// 超时没有收到请求.
+			if !rf.isLeader() {
+				// 如果没有进行中的选主流程, 则启动新的选主流程.
+				if ctx == nil {
+					ctx, cancel = context.WithCancel(context.Background())
+					go rf.elect(ctx)
+				}
+			}
+
+		case <-rf.done:
+			t.Stop()
+			// 服务退出时, 需要终止正在进行中的选主流程.
+			if ctx != nil {
+				cancel()
+				ctx = nil
+				cancel = nil
+			}
+			return
+		}
+	}
+}
+
+func (rf *Raft) apply() {
+	rf.mu.Lock()
+	defer func() {
+		rf.mu.Unlock()
+	}()
+	for rf.lastApplied < rf.commitIndex {
+		index := rf.lastApplied + 1
+		rf.mu.Unlock()
+		term := rf.getLogTerm(index)
+		rf.mu.Lock()
+		msg := ApplyMsg{
+			CommandValid: true,
+			Command:      rf.log[index].Command,
+			CommandIndex: index,
+			CommandTerm:  term,
+		}
+
+		if _, ok := rf.log[index]; ok {
+			rf.logger.Printf(0, rf.me, "Raft.apply apply msg, term: %d, index: %d, msg: %v",
+				term, index, msg)
+		} else {
+			rf.logger.Printf(0, rf.me, "Raft.apply apply empty msg, term: %d, index: %d, msg: %v",
+				term, index, msg)
+			lablog.Assert(false)
+		}
+
+		rf.applyCn <- msg
+
+		rf.lastApplied++
+		rf.mu.Unlock()
+		rf.persist()
+		rf.mu.Lock()
+	}
+}
+
+func (rf *Raft) backgroundApply() {
+	applying := atomic.NewBool(false)
+	for {
+		t := time.NewTimer(10 * time.Millisecond)
+		select {
+		case <-t.C:
+		case <-rf.commitCh:
+		}
+		// 保证同一个时刻只有一个goroutine在执行apply,
+		// 防止死锁的时候, 产生大量的无用goroutine.
+		if !applying.Load() {
+			applying.Store(true)
+			go func() {
+				rf.apply()
+				applying.Store(false)
+			}()
+		}
+	}
+}
+
+func (rf *Raft) trim() {
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
+	change := false
+	for i := rf.firstLogIndex; i <= rf.snapshotIndex && i < rf.commitIndex; i++ {
+		delete(rf.log, i)
+		rf.firstLogIndex = i + 1
+		change = true
+		rf.logger.Printf(0, rf.me, "Raft.trim delete log, index: %d", i)
+	}
+	if change {
+		rf.mu.Unlock()
+		rf.persist()
+		rf.mu.Lock()
+		rf.logger.Printf(0, rf.me, "Raft.trim trim log, first index: %d, snapshot index: %d",
+			rf.firstLogIndex, rf.snapshotIndex)
+	}
+}
+
+func (rf *Raft) backgroundTrimLog() {
+	for {
+		timer := time.NewTimer(5 * time.Millisecond)
+		select {
+		case <-timer.C:
+			rf.trim()
+		case <-rf.done:
+			return
+		}
+	}
+}
+
+// Log is refer to replicate log
+type Log struct {
+	Term    int
+	Command interface{}
+}
+
+//
+// ApplyMsg as each Raft peer becomes aware that successive log entries are
+// committed, the peer should send an ApplyMsg to the service (or
+// tester) on the same server, via the applyCh passed to Make(). set
+// CommandValid to true to indicate that the ApplyMsg contains a newly
+// committed log entry.
+//
+// in Lab 3 you'll want to send other kinds of messages (e.g.,
+// snapshots) on the applyCh; at that point you can add fields to
+// ApplyMsg, but set CommandValid to false for these other uses.
+//
+type ApplyMsg struct {
+	CommandValid bool
+	Command      interface{}
+	CommandIndex int
+	CommandTerm  int
+
+	SnapshotData []byte
+}
+
+// AppendEntriesArgs is AppendEntries's request struct
+type AppendEntriesArgs struct {
+	Term         int
+	LeaderID     int
+	PrevLogIndex int
+	PrevLogTerm  int
+	Entries      []Log
+	LeaderCommit int
+}
+
+// AppendEntriesReply is AppendEntries's response struct
+type AppendEntriesReply struct {
+	Term    int
+	Success bool
+}
+
+func (rf *Raft) getLogTerm(index int) int {
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
+	lablog.Assert(index >= rf.snapshotIndex)
+	if index == 0 {
+		return 0
+	}
+	if index == rf.snapshotIndex {
+		return rf.snapshotTerm
+	}
+	return rf.log[index].Term
+}
+
+func (rf *Raft) newAppendEntriesArgs(peerIdx int) *AppendEntriesArgs {
+	rf.mu.Lock()
+	defer func() {
+		rf.mu.Unlock()
+	}()
+
+	nextIndex := rf.nextIndex[peerIdx]
+	// 对于落后过多的节点, 不发送正常的append entries请求.
+	if nextIndex <= rf.snapshotIndex {
+		return &AppendEntriesArgs{}
+	}
+
+	args := &AppendEntriesArgs{}
+	args.Term = rf.currentTerm
+	args.LeaderID = rf.me
+	args.PrevLogIndex = 0
+	args.PrevLogTerm = 0
+	args.Entries = make([]Log, 0)
+	args.LeaderCommit = rf.commitIndex
+
+	if nextIndex <= rf.lastLogIndex {
+		for i := nextIndex; i <= rf.lastLogIndex; i++ {
+			args.Entries = append(args.Entries, rf.log[i])
+			if len(args.Entries) >= rf.batchCnt {
+				break
+			}
+		}
+	}
+
+	prevIndex := nextIndex - 1
+	if prevIndex > 0 {
+		args.PrevLogIndex = prevIndex
+		rf.mu.Unlock()
+		args.PrevLogTerm = rf.getLogTerm(prevIndex)
+		rf.mu.Lock()
+	}
+
+	return args
+}
+
+// AppendEntries RPC handler
+func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply) {
+	reset := false
+	commit := false
+	rf.mu.Lock()
+	defer func() {
+		rf.mu.Unlock()
+		if reset {
+			rf.resetCh <- struct{}{}
+		}
+		if commit {
+			rf.commitCh <- struct{}{}
+		}
+	}()
+
+	reply.Term = rf.currentTerm
+	reply.Success = false
+	if args.Term < rf.currentTerm {
+		return
+	}
+
+	if args.Term > rf.currentTerm {
+		rf.mu.Unlock()
+		rf.reset(args.Term)
+		rf.mu.Lock()
+		reply.Term = rf.currentTerm
+		reset = true
+	}
+
+	if args.PrevLogIndex > 0 {
+		if args.PrevLogIndex > rf.lastLogIndex {
+			return
+		}
+		if args.PrevLogIndex < rf.snapshotIndex {
+			return
+		}
+		if args.PrevLogIndex == rf.snapshotIndex {
+			if args.PrevLogTerm != rf.snapshotTerm {
+				return
+			}
+		} else {
+			if args.PrevLogTerm != rf.log[args.PrevLogIndex].Term {
+				return
+			}
+		}
+	}
+
+	if len(args.Entries) > 0 {
+		persist := false
+		appendCnt := 0
+
+		for i, log := range args.Entries {
+			index := args.PrevLogIndex + i + 1
+			if index <= rf.lastLogIndex && log.Term == rf.log[index].Term {
+				continue
+			}
+
+			for i := index; i <= rf.lastLogIndex; i++ {
+				delete(rf.log, i)
+			}
+
+			rf.log[index] = log
+			rf.lastLogIndex = index
+			persist = true
+			appendCnt++
+		}
+
+		if persist {
+			rf.mu.Unlock()
+			rf.persist()
+			rf.mu.Lock()
+		}
+
+		rf.logger.Printf(0, rf.me, "Raft.AppendEntries append logs from %d, append cnt: %d", args.LeaderID, appendCnt)
+	} else {
+		//rf.logger.Printf(0, rf.me, "Raft.AppendEntries receive empty log entry, last log index: %d, %v", rf.lastLogIndex, args)
+	}
+
+	index := args.PrevLogIndex + len(args.Entries)
+	if args.LeaderCommit > rf.commitIndex && index > rf.commitIndex {
+		rf.commitIndex = min(index, args.LeaderCommit)
+		commit = true
+	}
+
+	reply.Term = rf.currentTerm
+	reply.Success = true
+	reset = true
+}
+
+func (rf *Raft) forwardCommitIndex() bool {
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
+	commitIndex := rf.commitIndex
+	nextCommitIndex := max(commitIndex, rf.lastApplied) + 1
+	for nextCommitIndex <= rf.lastLogIndex {
+		if rf.log[nextCommitIndex].Term != rf.currentTerm {
+			nextCommitIndex++
+			continue
+		}
+		successCnt := 0
+		for peerIdx := range rf.peers {
+			if rf.matchIndex[peerIdx] >= nextCommitIndex {
+				successCnt++
+			}
+		}
+		if successCnt <= len(rf.peers)/2 {
+			break
+		}
+		rf.commitIndex = nextCommitIndex
+		nextCommitIndex++
+	}
+	return commitIndex < rf.commitIndex
+}
+
+func (rf *Raft) heartbeatToPeer(ctx context.Context, peerIdx int, peer *labrpc.ClientEnd) {
+	//rf.logger.Printf(0, rf.me, "Raft.heartbeatToPeer start, peer idx: %d", peerIdx)
+	//defer rf.logger.Printf(0, rf.me, "Raft.heartbeatToPeer end, peer idx: %d", peerIdx)
+
+	args := rf.newAppendEntriesArgs(peerIdx)
+	repl := &AppendEntriesReply{}
+	done := make(chan bool)
+	go func() {
+		ok := peer.Call("Raft.AppendEntries", args, repl)
+		select {
+		case done <- ok:
+		case <-ctx.Done():
+		case <-rf.done:
+		}
+	}()
+
+	select {
+	case <-ctx.Done():
+		return
+	case <-rf.done:
+		return
+	case ok := <-done:
+		if !ok {
+			return
+		}
+	}
+
+	if !rf.isLeader() {
+		return
+	}
+
+	reset := false
+	commit := false
+	rf.mu.Lock()
+	defer func() {
+		rf.mu.Unlock()
+		if reset {
+			rf.resetCh <- struct{}{}
+		}
+		if commit {
+			rf.commitCh <- struct{}{}
+		}
+	}()
+
+	if repl.Term < rf.currentTerm {
+		return
+	}
+
+	if repl.Term > rf.currentTerm {
+		rf.mu.Unlock()
+		rf.reset(repl.Term)
+		rf.mu.Lock()
+		reset = true
+		return
+	}
+
+	if !repl.Success {
+		rf.nextIndex[peerIdx] = max(rf.nextIndex[peerIdx]-rf.batchCnt, rf.matchIndex[peerIdx]+1)
+		go rf.heartbeatToPeer(context.TODO(), peerIdx, peer)
+		rf.logger.Printf(0, rf.me, "Raft.heartbeat, trigger heartbeat to in consistent peer, peer index: %d", peerIdx)
+		return
+	}
+
+	index := args.PrevLogIndex + len(args.Entries)
+	rf.nextIndex[peerIdx] = max(rf.nextIndex[peerIdx], index+1)
+	rf.matchIndex[peerIdx] = max(rf.matchIndex[peerIdx], index)
+	if len(args.Entries) > 0 {
+		rf.logger.Printf(0, rf.me, "Raft.heartbeat, repl success from %d, success index: %d", peerIdx, index)
+	}
+
+	rf.mu.Unlock()
+	if rf.forwardCommitIndex() {
+		commit = true
+		rf.logger.Printf(0, rf.me, "Raft.heartbeat, commit index update, commit index: %d", rf.commitIndex)
+	}
+	rf.mu.Lock()
+
+	if rf.lastLogIndex-rf.matchIndex[peerIdx] > rf.batchCnt {
+		go rf.heartbeatToPeer(context.TODO(), peerIdx, peer)
+		rf.logger.Printf(0, rf.me, "Raft.heartbeat, trigger heartbeat to lag peer, peer index: %d", peerIdx)
+	}
+}
+
+func (rf *Raft) heartbeat(ctx context.Context) {
+	//rf.logger.Printf(0, rf.me, "Raft.heartbeat start")
+	//defer rf.logger.Printf(0, rf.me, "Raft.heartbeat end")
+	wg := sync.WaitGroup{}
+	wg.Add(len(rf.peers) - 1)
+
+	rf.mu.Lock()
+	for peerIdx, peer := range rf.peers {
+		if peerIdx == rf.me {
+			continue
+		}
+		go func(peerIdx int, peer *labrpc.ClientEnd) {
+			rf.heartbeatToPeer(ctx, peerIdx, peer)
+			wg.Done()
+		}(peerIdx, peer)
+	}
+	rf.mu.Unlock()
+
+	wg.Wait()
+}
+
+func (rf *Raft) backgroundHeartbeat() {
+	var ctx context.Context
+	var cancel context.CancelFunc
+	inHeartbeat := atomic.NewBool(false)
+	for {
+		t := time.NewTimer(50 * time.Millisecond)
+
+		select {
+		case <-t.C:
+		case <-rf.heartbeatCh:
+			t.Stop()
+		case <-rf.done:
+			t.Stop()
+			return
+		}
+
+		if rf.IsLeader() {
+			if ctx != nil {
+				cancel()
+				ctx = nil
+				cancel = nil
+			}
+			if !inHeartbeat.Load() {
+				inHeartbeat.Store(true)
+				ctx, cancel = context.WithCancel(context.Background())
+				go func(ctx context.Context) {
+					rf.heartbeat(ctx)
+					inHeartbeat.Store(false)
+				}(ctx)
+			}
+		}
+	}
 }
