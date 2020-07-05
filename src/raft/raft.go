@@ -241,8 +241,7 @@ func (rf *Raft) Kill() {
 // Make() must return quickly, so it should start goroutines
 // for any long-running work.
 //
-func Make(peers []*labrpc.ClientEnd, me int,
-	persister *Persister, applyCh chan ApplyMsg) *Raft {
+func Make(peers []*labrpc.ClientEnd, me int, persister *Persister, applyCh chan ApplyMsg) *Raft {
 	rf := &Raft{}
 	rf.peers = peers
 	rf.persister = persister
@@ -295,27 +294,6 @@ func (rf *Raft) reset(term int) {
 
 	rf.beFollower()
 	rf.persist()
-}
-
-//
-// RequestVoteArgs is RequestVote RPC arguments structure.
-//
-type RequestVoteArgs struct {
-	// Your data here (2A, 2B).
-	Term         int
-	CandidateID  int
-	LastLogIndex int
-	LastLogTerm  int
-}
-
-//
-// RequestVoteReply is RequestVote RPC reply structure.
-//
-type RequestVoteReply struct {
-	// Your data here (2A).
-	Term        int
-	VoteGranted bool
-	PeerID      int
 }
 
 func (rf *Raft) newRequestVoteArgs() *RequestVoteArgs {
@@ -546,6 +524,7 @@ func (rf *Raft) backgroundElect() {
 	// 保证同一个时刻, 仅有一个有效的选举流程在进行.
 	var ctx context.Context
 	var cancel context.CancelFunc
+	electing := atomic.NewBool(false)
 	for {
 		// 心跳超时, 如果超时没有收到心跳, 则升级为候选人, 发起新的一轮选举.
 		rf.mu.Lock()
@@ -568,13 +547,24 @@ func (rf *Raft) backgroundElect() {
 
 		case <-t.C:
 			// 超时没有收到请求.
-			if !rf.isLeader() {
-				// 如果没有进行中的选主流程, 则启动新的选主流程.
-				if ctx == nil {
-					ctx, cancel = context.WithCancel(context.Background())
-					go rf.elect(ctx)
-				}
+			if rf.isLeader() {
+				break
 			}
+			if electing.Load() {
+				break
+			}
+			if ctx != nil {
+				cancel()
+				ctx = nil
+				cancel = nil
+			}
+			// 没有进行中的选主流程, 启动新的选主流程.
+			electing.Store(true)
+			ctx, cancel = context.WithCancel(context.Background())
+			go func() {
+				rf.elect(ctx)
+				electing.Store(false)
+			}()
 
 		case <-rf.done:
 			t.Stop()
@@ -673,48 +663,6 @@ func (rf *Raft) backgroundTrimLog() {
 			return
 		}
 	}
-}
-
-// Log is refer to replicate log
-type Log struct {
-	Term    int
-	Command interface{}
-}
-
-//
-// ApplyMsg as each Raft peer becomes aware that successive log entries are
-// committed, the peer should send an ApplyMsg to the service (or
-// tester) on the same server, via the applyCh passed to Make(). set
-// CommandValid to true to indicate that the ApplyMsg contains a newly
-// committed log entry.
-//
-// in Lab 3 you'll want to send other kinds of messages (e.g.,
-// snapshots) on the applyCh; at that point you can add fields to
-// ApplyMsg, but set CommandValid to false for these other uses.
-//
-type ApplyMsg struct {
-	CommandValid bool
-	Command      interface{}
-	CommandIndex int
-	CommandTerm  int
-
-	SnapshotData []byte
-}
-
-// AppendEntriesArgs is AppendEntries's request struct
-type AppendEntriesArgs struct {
-	Term         int
-	LeaderID     int
-	PrevLogIndex int
-	PrevLogTerm  int
-	Entries      []Log
-	LeaderCommit int
-}
-
-// AppendEntriesReply is AppendEntries's response struct
-type AppendEntriesReply struct {
-	Term    int
-	Success bool
 }
 
 func (rf *Raft) getLogTerm(index int) int {
